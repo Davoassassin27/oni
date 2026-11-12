@@ -81,6 +81,6 @@ stop the process first or run `oni-daemon\target\debug\oni-daemon.exe` directly.
   exercised end-to-end in this repo.
 - JSON persistence is best-effort atomic; crash during save can lose the last
   write. Migrate to SQLite when attempt history matters.
-- No project edit/delete, no push notifications, no interactive PTY, no
-  Web Push, no CI matrix yet.
+- No push notifications, no interactive PTY, no Web Push, no CI matrix yet.
+- Patch review is capped at 512 KB and only available while the worktree exists.
 - PWA install over LAN requires HTTPS (Tailscale Serve/TLS proxy).

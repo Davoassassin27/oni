@@ -170,6 +170,7 @@ export function Sheet({
   title,
   description,
   footer,
+  size = "default",
   children,
 }: {
   open: boolean;
@@ -177,6 +178,7 @@ export function Sheet({
   title: string;
   description?: ReactNode;
   footer?: ReactNode;
+  size?: "default" | "wide";
   children: ReactNode;
 }) {
   useEffect(() => {
@@ -207,7 +209,10 @@ export function Sheet({
         role="dialog"
         aria-modal="true"
         aria-label={title}
-        className="relative z-10 flex max-h-[92dvh] w-full animate-sheet flex-col overflow-hidden rounded-t-2xl border border-hueso/15 bg-raised md:max-w-lg md:rounded-2xl"
+        className={cn(
+          "relative z-10 flex max-h-[92dvh] w-full animate-sheet flex-col overflow-hidden rounded-t-2xl border border-hueso/15 bg-raised md:rounded-2xl",
+          size === "wide" ? "md:max-w-3xl" : "md:max-w-lg",
+        )}
       >
         <header className="flex items-start justify-between gap-4 border-b border-hueso/10 px-5 py-4">
           <div className="space-y-1">

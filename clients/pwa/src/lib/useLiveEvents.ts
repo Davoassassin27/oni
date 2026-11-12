@@ -41,6 +41,8 @@ export function useLiveEvents(): boolean | null {
           queryClient.setQueryData(["task", event.task.id], event.task);
         } else if (event.type === "project") {
           void queryClient.invalidateQueries({ queryKey: ["projects"] });
+        } else if (event.type === "project_deleted") {
+          void queryClient.invalidateQueries({ queryKey: ["projects"] });
         } else if (event.type === "log") {
           window.dispatchEvent(
             new CustomEvent("oni:log", { detail: event }),

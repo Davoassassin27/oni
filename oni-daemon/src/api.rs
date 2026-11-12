@@ -11,7 +11,7 @@ use axum::{
         IntoResponse, Response, Sse,
         sse::{Event, KeepAlive},
     },
-    routing::{get, post},
+    routing::{get, post, put},
 };
 use chrono::Utc;
 use futures_util::StreamExt;
@@ -22,7 +22,8 @@ use uuid::Uuid;
 use crate::error::AppError;
 use crate::git;
 use crate::model::{
-    AgentPreset, DiffSummary, NewProject, NewTask, Project, ServerEvent, Task, TaskState,
+    AgentPreset, DiffPatch, DiffSummary, NewProject, NewTask, Project, ServerEvent, Task,
+    TaskState, UpdateProject,
 };
 use crate::runner;
 use crate::state::AppState;
@@ -31,10 +32,12 @@ pub fn router(state: AppState) -> Router {
     Router::new()
         .route("/health", get(health))
         .route("/projects", get(list_projects).post(create_project))
+        .route("/projects/{id}", put(update_project).delete(delete_project))
         .route("/tasks", get(list_tasks).post(create_task))
         .route("/tasks/{id}", get(get_task))
         .route("/tasks/{id}/log", get(get_task_log))
         .route("/tasks/{id}/diff", get(get_task_diff))
+        .route("/tasks/{id}/patch", get(get_task_patch))
         .route("/tasks/{id}/stop", post(stop_task))
         .route("/tasks/{id}/retry", post(retry_task))
         .route("/tasks/{id}/merge", post(merge_task))
@@ -161,6 +164,92 @@ async fn create_project(
     });
 
     Ok((StatusCode::CREATED, Json(project)))
+}
+
+async fn update_project(
+    State(state): State<AppState>,
+    AxumPath(id): AxumPath<Uuid>,
+    Json(body): Json<UpdateProject>,
+) -> Result<Json<Project>, AppError> {
+    let existing_project = state
+        .store
+        .get_project(id)
+        .await
+        .ok_or_else(|| AppError::not_found("project not found"))?;
+
+    let name = body.name.trim().to_string();
+    if name.is_empty() {
+        return Err(AppError::bad_request("project name cannot be empty"));
+    }
+    if body.verify_command.trim().is_empty() {
+        return Err(AppError::bad_request(
+            "verification command cannot be empty",
+        ));
+    }
+    if body.path.trim().is_empty() {
+        return Err(AppError::bad_request("repository path cannot be empty"));
+    }
+    if body.agent == AgentPreset::Custom
+        && body
+            .custom_command
+            .as_deref()
+            .map(str::trim)
+            .filter(|value| !value.is_empty())
+            .is_none()
+    {
+        return Err(AppError::bad_request(
+            "a custom agent needs a command that reads the prompt from stdin",
+        ));
+    }
+
+    let (path, base_branch) = git::validate_repo(Path::new(body.path.trim()), &body.base_branch)
+        .await
+        .map_err(|error| AppError::bad_request(format!("{error:#}")))?;
+
+    let path_string = path.display().to_string();
+    let projects = state.store.list_projects().await;
+    if projects.iter().any(|project| {
+        project.id != id && project.path == path_string && project.base_branch == base_branch
+    }) {
+        return Err(AppError::conflict(
+            "another project already uses this repository and base branch",
+        ));
+    }
+
+    let updated = state
+        .store
+        .update_project(id, |project| {
+            project.name = name;
+            project.path = path_string;
+            project.base_branch = base_branch;
+            project.verify_command = body.verify_command.trim().to_string();
+            project.agent = body.agent;
+            project.custom_command = body
+                .custom_command
+                .map(|value| value.trim().to_string())
+                .filter(|value| !value.is_empty());
+        })
+        .await?
+        .ok_or_else(|| AppError::not_found("project not found"))?;
+
+    debug_assert_eq!(updated.id, existing_project.id);
+    let _ = state.events.send(ServerEvent::Project {
+        project: updated.clone(),
+    });
+    Ok(Json(updated))
+}
+
+async fn delete_project(
+    State(state): State<AppState>,
+    AxumPath(id): AxumPath<Uuid>,
+) -> Result<StatusCode, AppError> {
+    if !state.store.delete_project(id).await? {
+        return Err(AppError::not_found("project not found"));
+    }
+    let _ = state
+        .events
+        .send(ServerEvent::ProjectDeleted { project_id: id });
+    Ok(StatusCode::NO_CONTENT)
 }
 
 async fn list_tasks(State(state): State<AppState>) -> Json<Vec<Task>> {
@@ -326,6 +415,27 @@ async fn get_task_diff(
     } else {
         Ok(Json(task.diff.unwrap_or_default()))
     }
+}
+
+async fn get_task_patch(
+    State(state): State<AppState>,
+    AxumPath(id): AxumPath<Uuid>,
+) -> Result<Json<DiffPatch>, AppError> {
+    let task = state
+        .store
+        .get_task(id)
+        .await
+        .ok_or_else(|| AppError::not_found("task not found"))?;
+
+    if !Path::new(&task.worktree_path).exists() {
+        return Err(AppError::conflict(
+            "the patch is no longer available because the worktree was removed",
+        ));
+    }
+
+    let patch =
+        git::diff_patch(Path::new(&task.repo_path), &task.base_branch, &task.branch).await?;
+    Ok(Json(patch))
 }
 
 async fn stop_task(

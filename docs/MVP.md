@@ -15,6 +15,7 @@ repo de prueba y un agente fake:
   automático → review → merge / discard;
 - stop real (mata el árbol de procesos); el worktree queda;
 - dispatch y merge desde la PWA mobile;
+- revisión con patch unificado y edición/borrado de proyectos;
 - deep links del SPA, SSE, persistencia entre reinicios y token de API.
 
 Pendiente antes de llamarlo MVP cerrado: probar los presets reales de OpenCode y
@@ -93,13 +94,13 @@ notificaciones, terminal interactiva) salva al producto.
 ### Must (v0.1)
 
 - [x] Daemon local en Rust + Axum, binario único.
-- [x] Registro de proyectos (path, base branch, verify command, agente).
+- [x] Registro, edición y borrado de proyectos (path, base branch, verify command, agente).
 - [x] Tarea con worktree aislado y branch `oni/<slug>`.
 - [x] Agente headless no interactivo con presets: OpenCode, Claude Code, custom.
 - [x] Streaming de log por SSE + persistencia de log en disco.
 - [x] Loop Plan → Act → Verify con máximo de iteraciones y presupuesto de tiempo.
 - [x] Stop real (mata el árbol de procesos).
-- [x] Review con diff stat + archivos + salida de verificación.
+- [x] Review con diff stat, archivos, patch unificado y salida de verificación.
 - [x] Merge / Discard atómicos, con chequeo de repo limpio.
 - [x] PWA mobile-first instalable, estado en vivo, reconexión.
 - [x] Persistencia de tareas en SQLite o JSON atómico (sobrevive reinicios).
@@ -116,9 +117,9 @@ notificaciones, terminal interactiva) salva al producto.
 
 ### Won't (por ahora)
 
-- **Juniperus / router LLM local.** Es otro producto. El MVP usa los modelos que
-  ya elige el agente. Un router local agrega FFI, descargas de GGUF y una
-  superficie enorme de fallos antes de validar la hipótesis.
+- **Juniperus en el camino crítico del MVP.** El router SLM se desarrolla en
+  `feat/juniperus` y se integra después, con shadow mode y fallback. El MVP usa
+  el router determinístico y no depende de que el modelo esté listo.
 - **Orquestación multiagente / DAGs.** Una tarea, un agente, un worktree.
 - **Terminal interactiva como camino principal.** Los agentes corren en modo
   headless; los permisos se resuelven por preset. La PTY queda para debugging.
@@ -189,11 +190,14 @@ Invariantes:
 GET    /api/health
 GET    /api/projects
 POST   /api/projects
+PUT    /api/projects/:id
+DELETE /api/projects/:id
 GET    /api/tasks
 POST   /api/tasks
 GET    /api/tasks/:id
 GET    /api/tasks/:id/log
 GET    /api/tasks/:id/diff
+GET    /api/tasks/:id/patch
 POST   /api/tasks/:id/stop
 POST   /api/tasks/:id/retry
 POST   /api/tasks/:id/merge

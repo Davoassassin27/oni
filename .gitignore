@@ -7,3 +7,6 @@ target/
 .DS_Store
 .oni/
 oni-daemon/data/
+__pycache__/
+*.pyc
+.venv/

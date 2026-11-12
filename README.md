@@ -31,7 +31,8 @@ pulido, tests de integración y las piezas marcadas en
 - Streamear el log en vivo por SSE y persistirlo a disco.
 - Correr la verificación después de cada intento, reinyectar el error y
   reintentar hasta el límite.
-- Ver diff stat y archivos cambiados.
+- Ver diff stat, archivos cambiados y el **patch unificado** con hunks.
+- Editar y borrar proyectos; borrar mantiene el historial de tareas.
 - Stop real (mata el árbol de procesos), retry, discard y merge `--no-ff`.
 - Persistencia de estado entre reinicios; las tareas interrumpidas se marcan
   como `failed` en vez de quedar colgadas.
@@ -144,10 +145,12 @@ queda en review.
 ```text
 GET    /api/health
 GET    /api/projects          POST /api/projects
+PUT    /api/projects/:id      DELETE /api/projects/:id
 GET    /api/tasks             POST /api/tasks
 GET    /api/tasks/:id
 GET    /api/tasks/:id/log
 GET    /api/tasks/:id/diff
+GET    /api/tasks/:id/patch
 POST   /api/tasks/:id/stop
 POST   /api/tasks/:id/retry
 POST   /api/tasks/:id/merge

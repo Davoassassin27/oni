@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { api } from "../lib/api";
-import type { AgentPreset, NewProjectInput } from "../lib/types";
+import type { AgentPreset, NewProjectInput, Project } from "../lib/types";
 import { agentLabel } from "../lib/utils";
-import { FolderIcon, PlusIcon } from "../components/icons";
+import { FolderIcon, PencilIcon, PlusIcon, TrashIcon } from "../components/icons";
 import {
   Button,
+  ConfirmDialog,
   Field,
   Sheet,
   inputClass,
@@ -15,11 +16,40 @@ import {
 } from "../components/ui";
 
 export default function ProjectsPage() {
+  const queryClient = useQueryClient();
   const [sheetOpen, setSheetOpen] = useState(false);
+  const [editingProject, setEditingProject] = useState<Project | null>(null);
+  const [deletingProject, setDeletingProject] = useState<Project | null>(null);
+
   const projects = useQuery({
     queryKey: ["projects"],
     queryFn: api.projects,
   });
+
+  const deleteProject = useMutation({
+    mutationFn: (project: Project) => api.deleteProject(project.id),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: ["projects"] });
+      toast("Project removed", "success");
+      setDeletingProject(null);
+    },
+    onError: (error: Error) => toast(error.message, "error"),
+  });
+
+  const openCreate = () => {
+    setEditingProject(null);
+    setSheetOpen(true);
+  };
+
+  const openEdit = (project: Project) => {
+    setEditingProject(project);
+    setSheetOpen(true);
+  };
+
+  const closeSheet = () => {
+    setSheetOpen(false);
+    setEditingProject(null);
+  };
 
   return (
     <div className="animate-rise">
@@ -37,7 +67,7 @@ export default function ProjectsPage() {
           <div className="hidden shrink-0 md:block">
             <Button
               variant="primary"
-              onClick={() => setSheetOpen(true)}
+              onClick={openCreate}
             >
               <PlusIcon className="h-4 w-4" />
               Add project
@@ -72,7 +102,7 @@ export default function ProjectsPage() {
           <Button
             variant="primary"
             className="mt-6"
-            onClick={() => setSheetOpen(true)}
+            onClick={openCreate}
           >
             <PlusIcon className="h-4 w-4" />
             Connect a repository
@@ -101,9 +131,29 @@ export default function ProjectsPage() {
                     {project.path}
                   </p>
                 </div>
-                <span className="shrink-0 rounded-md border border-hueso/15 px-2 py-1 font-mono text-[9px] uppercase tracking-[0.12em] text-ceniza">
-                  {agentLabel(project.agent)}
-                </span>
+                <div className="flex shrink-0 items-center gap-1">
+                  <span className="rounded-md border border-hueso/15 px-2 py-1 font-mono text-[9px] uppercase tracking-[0.12em] text-ceniza">
+                    {agentLabel(project.agent)}
+                  </span>
+                  <button
+                    type="button"
+                    aria-label={`Edit ${project.name}`}
+                    title="Edit project"
+                    onClick={() => openEdit(project)}
+                    className="flex h-11 w-11 items-center justify-center rounded-lg text-ceniza transition-colors hover:bg-hueso/5 hover:text-hueso"
+                  >
+                    <PencilIcon className="h-4 w-4" />
+                  </button>
+                  <button
+                    type="button"
+                    aria-label={`Delete ${project.name}`}
+                    title="Delete project"
+                    onClick={() => setDeletingProject(project)}
+                    className="flex h-11 w-11 items-center justify-center rounded-lg text-ceniza transition-colors hover:bg-vermilion/10 hover:text-vermilion"
+                  >
+                    <TrashIcon className="h-4 w-4" />
+                  </button>
+                </div>
               </div>
 
               <div className="mt-4 grid gap-3 border-t border-hueso/10 pt-3 sm:grid-cols-2">
@@ -138,26 +188,52 @@ export default function ProjectsPage() {
 
       <button
         type="button"
-        onClick={() => setSheetOpen(true)}
+        onClick={openCreate}
         aria-label="Add project"
         className="fab-above-nav fixed right-4 z-40 flex h-14 w-14 items-center justify-center rounded-full bg-kintsugi text-sumi transition-colors hover:bg-[#d4ad3a] md:hidden"
       >
         <PlusIcon className="h-6 w-6" />
       </button>
 
-      <AddProjectSheet
+      <ProjectSheet
+        key={editingProject?.id ?? "new"}
         open={sheetOpen}
-        onClose={() => setSheetOpen(false)}
+        project={editingProject}
+        onClose={closeSheet}
       />
+
+      <ConfirmDialog
+        open={Boolean(deletingProject)}
+        onClose={() => setDeletingProject(null)}
+        onConfirm={() => {
+          if (deletingProject) deleteProject.mutate(deletingProject);
+        }}
+        title="Delete this project?"
+        description="Existing tasks keep their history and worktrees. New tasks will not be able to use this repository until you connect it again."
+        confirmLabel="Delete project"
+        tone="danger"
+        loading={deleteProject.isPending}
+      >
+        <div className="rounded-lg border border-vermilion/20 bg-vermilion/5 px-3 py-2">
+          <p className="font-mono text-[11px] text-vermilion">
+            {deletingProject?.name}
+          </p>
+          <p className="mt-1 truncate font-mono text-[10px] text-vermilion/75">
+            {deletingProject?.path}
+          </p>
+        </div>
+      </ConfirmDialog>
     </div>
   );
 }
 
-function AddProjectSheet({
+function ProjectSheet({
   open,
+  project,
   onClose,
 }: {
   open: boolean;
+  project: Project | null;
   onClose: () => void;
 }) {
   const queryClient = useQueryClient();
@@ -177,20 +253,23 @@ function AddProjectSheet({
     }
     if (initialized.current) return;
     initialized.current = true;
-    setName("");
-    setPath("");
-    setBaseBranch("main");
-    setVerifyCommand("npm test");
-    setAgent("opencode");
-    setCustomCommand("");
+    setName(project?.name ?? "");
+    setPath(project?.path ?? "");
+    setBaseBranch(project?.baseBranch ?? "main");
+    setVerifyCommand(project?.verifyCommand ?? "npm test");
+    setAgent(project?.agent ?? "opencode");
+    setCustomCommand(project?.customCommand ?? "");
     setError(null);
-  }, [open]);
+  }, [open, project]);
 
-  const createProject = useMutation({
-    mutationFn: (input: NewProjectInput) => api.createProject(input),
+  const saveProject = useMutation({
+    mutationFn: (input: NewProjectInput) =>
+      project
+        ? api.updateProject(project.id, input)
+        : api.createProject(input),
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ["projects"] });
-      toast("Repository connected", "success");
+      toast(project ? "Project updated" : "Repository connected", "success");
       onClose();
     },
     onError: (mutationError: Error) => setError(mutationError.message),
@@ -213,7 +292,7 @@ function AddProjectSheet({
       setError("A custom agent needs a command.");
       return;
     }
-    createProject.mutate({
+    saveProject.mutate({
       name: name.trim(),
       path: path.trim(),
       baseBranch: baseBranch.trim() || "main",
@@ -227,8 +306,12 @@ function AddProjectSheet({
     <Sheet
       open={open}
       onClose={onClose}
-      title="Connect a repository"
-      description="Use an absolute path on the machine running the daemon. Oni validates the path and base branch before saving."
+      title={project ? "Edit project" : "Connect a repository"}
+      description={
+        project
+          ? "Update the repository configuration. The path and base branch are validated again."
+          : "Use an absolute path on the machine running the daemon. Oni validates the path and base branch before saving."
+      }
       footer={
         <div>
           {error ? (
@@ -241,10 +324,10 @@ function AddProjectSheet({
             form="project-form"
             variant="primary"
             className="w-full"
-            loading={createProject.isPending}
+            loading={saveProject.isPending}
             disabled={!canSubmit}
           >
-            Connect repository
+            {project ? "Save changes" : "Connect repository"}
           </Button>
         </div>
       }

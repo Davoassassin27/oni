@@ -103,6 +103,22 @@ pub struct DiffSummary {
     pub deletions: u64,
 }
 
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DiffFilePatch {
+    pub path: String,
+    pub patch: String,
+    pub insertions: u64,
+    pub deletions: u64,
+}
+
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct DiffPatch {
+    pub files: Vec<DiffFilePatch>,
+    pub truncated: bool,
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Task {
@@ -137,6 +153,18 @@ pub struct Task {
 
 #[derive(Clone, Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct UpdateProject {
+    pub name: String,
+    pub path: String,
+    pub base_branch: String,
+    pub verify_command: String,
+    pub agent: AgentPreset,
+    #[serde(default)]
+    pub custom_command: Option<String>,
+}
+
+#[derive(Clone, Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct NewTask {
     pub project_id: Uuid,
     pub title: String,
@@ -164,5 +192,9 @@ pub enum ServerEvent {
     },
     Project {
         project: Project,
+    },
+    #[serde(rename_all = "camelCase")]
+    ProjectDeleted {
+        project_id: Uuid,
     },
 }

@@ -1,4 +1,5 @@
 import type {
+  DiffPatch,
   Health,
   NewProjectInput,
   NewTaskInput,
@@ -72,11 +73,19 @@ export const api = {
       method: "POST",
       body: JSON.stringify(input),
     }),
+  updateProject: (id: string, input: NewProjectInput) =>
+    request<Project>(`/projects/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(input),
+    }),
+  deleteProject: (id: string) =>
+    request<void>(`/projects/${id}`, { method: "DELETE" }),
   tasks: () => request<Task[]>("/tasks"),
   task: (id: string) => request<Task>(`/tasks/${id}`),
   createTask: (input: NewTaskInput) =>
     request<Task>("/tasks", { method: "POST", body: JSON.stringify(input) }),
   log: (id: string) => requestText(`/tasks/${id}/log`),
+  patch: (id: string) => request<DiffPatch>(`/tasks/${id}/patch`),
   stop: (id: string) => request<Task>(`/tasks/${id}/stop`, { method: "POST" }),
   retry: (id: string) =>
     request<Task>(`/tasks/${id}/retry`, { method: "POST" }),

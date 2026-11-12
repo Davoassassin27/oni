@@ -85,6 +85,32 @@ impl Store {
         Ok(project)
     }
 
+    pub async fn update_project<F>(&self, id: Uuid, update: F) -> Result<Option<Project>>
+    where
+        F: FnOnce(&mut Project),
+    {
+        let mut db = self.db.write().await;
+        let Some(project) = db.projects.iter_mut().find(|project| project.id == id) else {
+            return Ok(None);
+        };
+
+        update(project);
+        let updated = project.clone();
+        self.persist(&db).await?;
+        Ok(Some(updated))
+    }
+
+    pub async fn delete_project(&self, id: Uuid) -> Result<bool> {
+        let mut db = self.db.write().await;
+        let before = db.projects.len();
+        db.projects.retain(|project| project.id != id);
+        if db.projects.len() == before {
+            return Ok(false);
+        }
+        self.persist(&db).await?;
+        Ok(true)
+    }
+
     pub async fn list_tasks(&self) -> Vec<Task> {
         let mut tasks = self.db.read().await.tasks.clone();
         tasks.sort_by(|a, b| b.created_at.cmp(&a.created_at));

@@ -35,6 +35,18 @@ export interface DiffSummary {
   deletions: number;
 }
 
+export interface DiffFilePatch {
+  path: string;
+  patch: string;
+  insertions: number;
+  deletions: number;
+}
+
+export interface DiffPatch {
+  files: DiffFilePatch[];
+  truncated: boolean;
+}
+
 export interface Task {
   id: string;
   projectId: string;
@@ -92,7 +104,8 @@ export interface NewTaskInput {
 export type ServerEvent =
   | { type: "task"; task: Task }
   | { type: "log"; taskId: string; chunk: string }
-  | { type: "project"; project: Project };
+  | { type: "project"; project: Project }
+  | { type: "project_deleted"; projectId: string };
 
 export const ACTIVE_STATES: TaskState[] = [
   "queued",

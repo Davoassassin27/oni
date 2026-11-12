@@ -4,7 +4,7 @@ use std::process::Output;
 use anyhow::{Context, Result, bail};
 use tokio::process::Command;
 
-use crate::model::{DiffSummary, FileChange};
+use crate::model::{DiffFilePatch, DiffPatch, DiffSummary, FileChange};
 
 async fn run_git(dir: &Path, args: &[&str]) -> Result<Output> {
     let mut command = Command::new("git");
@@ -194,6 +194,95 @@ pub async fn diff_summary(repo: &Path, base_branch: &str, branch: &str) -> Resul
     })
 }
 
+const MAX_PATCH_BYTES: usize = 512 * 1024;
+
+pub async fn diff_patch(repo: &Path, base_branch: &str, branch: &str) -> Result<DiffPatch> {
+    let range = format!("{base_branch}...{branch}");
+    let output = run_git(
+        repo,
+        &["diff", "--no-color", "--unified=3", "--no-ext-diff", &range],
+    )
+    .await?;
+
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        bail!(
+            "git diff failed: {}",
+            if stderr.trim().is_empty() {
+                stdout.trim()
+            } else {
+                stderr.trim()
+            }
+        );
+    }
+
+    let bytes = output.stdout;
+    let truncated = bytes.len() > MAX_PATCH_BYTES;
+    let slice = if truncated {
+        let cut = bytes[..MAX_PATCH_BYTES]
+            .iter()
+            .rposition(|byte| *byte == b'\n')
+            .map(|position| position + 1)
+            .unwrap_or(MAX_PATCH_BYTES);
+        &bytes[..cut]
+    } else {
+        &bytes
+    };
+
+    let raw = String::from_utf8_lossy(slice);
+    Ok(DiffPatch {
+        files: parse_patch(&raw),
+        truncated,
+    })
+}
+
+fn parse_patch(raw: &str) -> Vec<DiffFilePatch> {
+    let mut files: Vec<DiffFilePatch> = Vec::new();
+    let mut current: Option<DiffFilePatch> = None;
+
+    for line in raw.split_inclusive('\n') {
+        if line.starts_with("diff --git ") {
+            if let Some(file) = current.take() {
+                files.push(file);
+            }
+            current = Some(DiffFilePatch {
+                path: parse_diff_git_path(line).unwrap_or("unknown").to_string(),
+                patch: String::new(),
+                insertions: 0,
+                deletions: 0,
+            });
+        }
+
+        let Some(file) = current.as_mut() else {
+            continue;
+        };
+
+        if let Some(path) = line.strip_prefix("+++ b/") {
+            file.path = path.trim().to_string();
+        }
+        if line.starts_with('+') && !line.starts_with("+++") {
+            file.insertions += 1;
+        }
+        if line.starts_with('-') && !line.starts_with("---") {
+            file.deletions += 1;
+        }
+        file.patch.push_str(line);
+    }
+
+    if let Some(file) = current {
+        files.push(file);
+    }
+
+    files
+}
+
+fn parse_diff_git_path(line: &str) -> Option<&str> {
+    let rest = line.strip_prefix("diff --git ")?;
+    let marker = rest.find(" b/")?;
+    Some(rest[marker + 3..].trim())
+}
+
 fn parse_numstat(numstat: &str) -> (Vec<FileChange>, u64, u64) {
     let mut files = Vec::new();
     let mut insertions = 0u64;
@@ -281,5 +370,37 @@ mod tests {
         assert_eq!(deletions, 1);
         assert_eq!(files[2].path, "assets/logo.png");
         assert_eq!(files[2].insertions, 0);
+    }
+
+    #[test]
+    fn patch_parser_splits_files_and_counts_lines() {
+        let raw = "\
+diff --git a/src/lib.rs b/src/lib.rs
+index 1111111..2222222 100644
+--- a/src/lib.rs
++++ b/src/lib.rs
+@@ -1,3 +1,4 @@
+ fn main() {
+-    old();
++    new();
++    also_new();
+ }
+diff --git a/README.md b/README.md
+index 3333333..4444444 100644
+--- a/README.md
++++ b/README.md
+@@ -1 +1,2 @@
+ hello
++world
+";
+        let files = parse_patch(raw);
+        assert_eq!(files.len(), 2);
+        assert_eq!(files[0].path, "src/lib.rs");
+        assert_eq!(files[0].insertions, 2);
+        assert_eq!(files[0].deletions, 1);
+        assert_eq!(files[1].path, "README.md");
+        assert_eq!(files[1].insertions, 1);
+        assert_eq!(files[1].deletions, 0);
+        assert!(files[0].patch.contains("@@ -1,3 +1,4 @@"));
     }
 }

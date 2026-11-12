@@ -5,7 +5,6 @@ import {
   ACTIVE_STATES,
   type DiffSummary,
   type Task,
-  type TaskState,
 } from "../lib/types";
 import { api } from "../lib/api";
 import {
@@ -35,6 +34,7 @@ import {
   StatePill,
   toast,
 } from "../components/ui";
+import { PatchSheet } from "../components/PatchSheet";
 
 type ActionKind = "stop" | "retry" | "merge" | "discard";
 
@@ -50,6 +50,7 @@ export default function TaskDetailPage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const [dialog, setDialog] = useState<ActionKind | null>(null);
+  const [patchOpen, setPatchOpen] = useState(false);
 
   const taskQuery = useQuery({
     queryKey: ["task", id],
@@ -194,7 +195,9 @@ export default function TaskDetailPage() {
         </section>
       ) : null}
 
-      {task.diff ? <DiffSection diff={task.diff} state={task.state} /> : null}
+      {task.diff ? (
+        <DiffSection diff={task.diff} onOpenPatch={() => setPatchOpen(true)} />
+      ) : null}
 
       {review && !task.diff ? (
         <p className="mt-5 rounded-xl border border-hueso/10 bg-raised px-4 py-3 text-xs text-ceniza">
@@ -345,6 +348,14 @@ export default function TaskDetailPage() {
         </ActionBar>
       ) : null}
 
+      <PatchSheet
+        taskId={task.id}
+        branch={task.branch}
+        baseBranch={task.baseBranch}
+        open={patchOpen}
+        onClose={() => setPatchOpen(false)}
+      />
+
       <ConfirmDialog
         open={dialog === "merge"}
         onClose={() => setDialog(null)}
@@ -492,26 +503,33 @@ function Pipeline({ task }: { task: Task }) {
 
 function DiffSection({
   diff,
-  state,
+  onOpenPatch,
 }: {
   diff: DiffSummary;
-  state: TaskState;
+  onOpenPatch: () => void;
 }) {
   return (
     <section className="mt-5 overflow-hidden rounded-xl border border-hueso/10 bg-raised">
-      <header className="flex items-center justify-between gap-3 border-b border-hueso/10 px-4 py-3">
-        <h2 className="font-mono text-[10px] uppercase tracking-[0.14em] text-hueso">
-          Changes
-        </h2>
-        <p className="font-mono text-[10px] text-ceniza">
-          {diff.files.length} files ·{" "}
-          <span className="text-kintsugi">+{diff.insertions}</span>{" "}
-          <span>−{diff.deletions}</span>
-        </p>
+      <header className="flex flex-wrap items-center justify-between gap-3 border-b border-hueso/10 px-4 py-3">
+        <div className="flex items-center gap-3">
+          <h2 className="font-mono text-[10px] uppercase tracking-[0.14em] text-hueso">
+            Changes
+          </h2>
+          <p className="font-mono text-[10px] text-ceniza">
+            {diff.files.length} files ·{" "}
+            <span className="text-kintsugi">+{diff.insertions}</span>{" "}
+            <span>−{diff.deletions}</span>
+          </p>
+        </div>
+        {diff.files.length > 0 ? (
+          <Button variant="secondary" size="sm" onClick={onOpenPatch}>
+            View patch
+          </Button>
+        ) : null}
       </header>
       {diff.files.length === 0 ? (
         <p className="px-4 py-4 text-xs text-ceniza">
-          No changes were detected between the worktree and {state === "merged" ? "the base branch" : "the base branch"}.
+          No changes were detected between the worktree and the base branch.
         </p>
       ) : (
         <ul className="max-h-72 divide-y divide-hueso/8 overflow-auto">

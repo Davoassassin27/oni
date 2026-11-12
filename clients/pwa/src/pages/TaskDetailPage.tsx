@@ -196,7 +196,11 @@ export default function TaskDetailPage() {
       ) : null}
 
       {task.diff ? (
-        <DiffSection diff={task.diff} onOpenPatch={() => setPatchOpen(true)} />
+        <DiffSection
+          diff={task.diff}
+          canPatch={!["merged", "discarded"].includes(task.state)}
+          onOpenPatch={() => setPatchOpen(true)}
+        />
       ) : null}
 
       {review && !task.diff ? (
@@ -503,9 +507,11 @@ function Pipeline({ task }: { task: Task }) {
 
 function DiffSection({
   diff,
+  canPatch,
   onOpenPatch,
 }: {
   diff: DiffSummary;
+  canPatch: boolean;
   onOpenPatch: () => void;
 }) {
   return (
@@ -521,7 +527,7 @@ function DiffSection({
             <span>−{diff.deletions}</span>
           </p>
         </div>
-        {diff.files.length > 0 ? (
+        {canPatch && diff.files.length > 0 ? (
           <Button variant="secondary" size="sm" onClick={onOpenPatch}>
             View patch
           </Button>

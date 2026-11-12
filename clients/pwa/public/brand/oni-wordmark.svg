@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="-8 -8 280 136" role="img" aria-label="ONI">
+  <title>ONI</title>
+  <g fill="#F3EFE6">
+    <path fill-rule="evenodd" d="M20 0 H76 L96 20 V100 L76 120 H20 L0 100 V20 Z M30 24 H66 L72 30 V90 L66 96 H30 L24 90 V30 Z"/>
+    <path transform="translate(114 0)" d="M0 0 H24 V120 H0 Z M76 0 H100 V120 H76 Z M10 0 H38 L90 120 H62 Z"/>
+    <path transform="translate(240 0)" d="M0 0 H24 V96 L12 120 L0 96 Z"/>
+  </g>
+</svg>

@@ -1,0 +1,181 @@
+@import "tailwindcss";
+
+@font-face {
+  font-family: "Inter Variable";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 100 900;
+  src: url("/fonts/inter-latin-variable.woff2") format("woff2-variations");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6,
+    U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122,
+    U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: "JetBrains Mono";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 400;
+  src: url("/fonts/jetbrains-mono-400.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6,
+    U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122,
+    U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+  font-family: "JetBrains Mono";
+  font-style: normal;
+  font-display: swap;
+  font-weight: 500;
+  src: url("/fonts/jetbrains-mono-500.woff2") format("woff2");
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6,
+    U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122,
+    U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+
+@theme {
+  --color-sumi: #0b0b0c;
+  --color-hueso: #f3efe6;
+  --color-kintsugi: #c9a227;
+  --color-ceniza: #8b857a;
+  --color-vermilion: #e23b2e;
+
+  --color-raised: #141416;
+  --color-sunken: #080809;
+  --color-line: rgb(243 239 230 / 0.14);
+
+  --font-sans: "Inter Variable", ui-sans-serif, system-ui, -apple-system,
+    "Segoe UI", sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo,
+    Consolas, monospace;
+
+  --radius-card: 0.875rem;
+}
+
+@layer base {
+  * {
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  html {
+    background: var(--color-sumi);
+    color-scheme: dark;
+  }
+
+  body {
+    margin: 0;
+    min-width: 320px;
+    min-height: 100dvh;
+    background: var(--color-sumi);
+    color: var(--color-hueso);
+    font-family: var(--font-sans);
+    font-synthesis: none;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  button,
+  a,
+  input,
+  select,
+  textarea {
+    touch-action: manipulation;
+  }
+
+  ::selection {
+    background: var(--color-kintsugi);
+    color: var(--color-sumi);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-kintsugi);
+    outline-offset: 2px;
+  }
+
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: #343432 transparent;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+      scroll-behavior: auto !important;
+    }
+  }
+}
+
+@layer utilities {
+  .descriptor {
+    font-family: var(--font-mono);
+    font-size: 0.625rem;
+    line-height: 1.2;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--color-kintsugi);
+  }
+
+  .hairline {
+    border-color: var(--color-line);
+  }
+
+  .safe-bottom {
+    padding-bottom: max(env(safe-area-inset-bottom), 0.5rem);
+  }
+
+  .fab-above-nav {
+    bottom: calc(5rem + env(safe-area-inset-bottom) + 0.75rem);
+  }
+
+  .text-pretty {
+    text-wrap: pretty;
+  }
+}
+
+@keyframes oni-rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes oni-sheet {
+  from {
+    opacity: 0;
+    transform: translateY(24px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes oni-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-rise {
+  animation: oni-rise 220ms cubic-bezier(0.22, 1, 0.36, 1) backwards;
+}
+
+.animate-sheet {
+  animation: oni-sheet 260ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.animate-fade {
+  animation: oni-fade 180ms ease-out both;
+}

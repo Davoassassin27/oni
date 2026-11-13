@@ -38,6 +38,28 @@ pulido, tests de integración y las piezas marcadas en
   como `failed` en vez de quedar colgadas.
 - PWA instalable, dark-first, con reconexión y token opcional para LAN.
 
+### Smoke test automatizado
+
+Con el daemon corriendo:
+
+```bash
+npm run smoke            # agente fake, sin tokens
+npm run smoke:opencode   # OpenCode real, usa el modelo configurado en OpenCode
+```
+
+`smoke:opencode` corre OpenCode con `--auto` (headless, sin aprobaciones
+interactivas). Para forzar un modelo sin tocar la config global del CLI, arrancá
+el daemon con `ONI_OPENCODE_MODEL=<provider/model>`:
+
+```powershell
+$env:ONI_OPENCODE_MODEL="opencode-go/beam-free"
+.\oni-daemon\target\debug\oni-daemon.exe
+```
+
+El script crea un repo temporal, registra el proyecto, lanza una tarea, espera
+`review`, valida el patch, mergea y comprueba que el archivo llegó a `main`.
+Si falla, deja el repo y el log para inspeccionar.
+
 ## Inicio rápido
 
 Requisitos: **Rust 1.88+**, **Node 22+**, **git** y al menos un agente CLI en el
@@ -138,6 +160,8 @@ queda en review.
 | `ONI_PWA_DIR` | `clients/pwa/dist` | Build estático servido por el daemon. |
 | `ONI_AGENT_TIMEOUT_SECS` | `1800` | Timeout por intento de agente. |
 | `ONI_VERIFY_TIMEOUT_SECS` | `600` | Timeout de la verificación. |
+| `ONI_OPENCODE_MODEL` | vacío | `provider/model` opcional para `opencode run --model`. |
+| `ONI_OPENCODE_BIN` | autodetectado | Ruta explícita al binario de OpenCode. |
 | `ONI_LOG` | `oni_daemon=info,tower_http=info` | Filtro de `tracing`. |
 
 ## API

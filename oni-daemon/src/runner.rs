@@ -1,4 +1,4 @@
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::process::Stdio;
 use std::sync::Arc;
 use std::sync::atomic::Ordering;
@@ -261,8 +261,16 @@ async fn run_agent(
     let custom = task.agent == AgentPreset::Custom;
     let mut command = match task.agent {
         AgentPreset::Opencode => {
-            let mut command = Command::new("opencode");
-            command.arg("run").arg(prompt);
+            let mut command = Command::new(opencode_program());
+            command.arg("run").arg("--auto");
+            if let Some(model) = std::env::var("ONI_OPENCODE_MODEL")
+                .ok()
+                .map(|value| value.trim().to_string())
+                .filter(|value| !value.is_empty())
+            {
+                command.args(["--model", &model]);
+            }
+            command.arg(prompt);
             command
         }
         AgentPreset::Claude => {
@@ -494,6 +502,60 @@ fn shell_command(raw: &str) -> Command {
         command.args(["-c", raw]);
         command
     }
+}
+
+/// Windows npm installs OpenCode as a `.cmd` shim, which `CreateProcessW`
+/// cannot execute directly. Resolve the real `.exe` when possible; otherwise
+/// fall back to the PATH lookup and let the spawn error be explicit.
+fn opencode_program() -> PathBuf {
+    if let Some(path) = std::env::var_os("ONI_OPENCODE_BIN") {
+        return PathBuf::from(path);
+    }
+
+    #[cfg(windows)]
+    {
+        let mut candidates = Vec::new();
+        if let Some(appdata) = std::env::var_os("APPDATA") {
+            candidates.push(
+                PathBuf::from(appdata)
+                    .join("npm")
+                    .join("node_modules")
+                    .join("@opencode")
+                    .join("cli")
+                    .join("bin")
+                    .join("opencode.exe"),
+            );
+        }
+        if let Some(local) = std::env::var_os("LOCALAPPDATA") {
+            candidates.push(
+                PathBuf::from(local)
+                    .join("npm")
+                    .join("node_modules")
+                    .join("@opencode")
+                    .join("cli")
+                    .join("bin")
+                    .join("opencode.exe"),
+            );
+        }
+        if let Some(home) = std::env::var_os("USERPROFILE") {
+            candidates.push(
+                PathBuf::from(home)
+                    .join("AppData")
+                    .join("Roaming")
+                    .join("npm")
+                    .join("node_modules")
+                    .join("@opencode")
+                    .join("cli")
+                    .join("bin")
+                    .join("opencode.exe"),
+            );
+        }
+        if let Some(found) = candidates.into_iter().find(|path| path.is_file()) {
+            return found;
+        }
+    }
+
+    PathBuf::from("opencode")
 }
 
 pub async fn append_log(state: &AppState, task_id: Uuid, chunk: &str) {

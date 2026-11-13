@@ -77,8 +77,8 @@ stop the process first or run `oni-daemon\target\debug\oni-daemon.exe` directly.
 
 ## Known gaps (v0.1)
 
-- OpenCode/Claude presets are implemented but only a custom agent has been
-  exercised end-to-end in this repo.
+- OpenCode is exercised end-to-end (smoke test, Windows npm shim resolution,
+  `--auto`); Claude preset is implemented but not exercised end-to-end yet.
 - JSON persistence is best-effort atomic; crash during save can lose the last
   write. Migrate to SQLite when attempt history matters.
 - No push notifications, no interactive PTY, no Web Push, no CI matrix yet.

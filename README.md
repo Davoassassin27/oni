@@ -60,6 +60,12 @@ El script crea un repo temporal, registra el proyecto, lanza una tarea, espera
 `review`, valida el patch, mergea y comprueba que el archivo llegó a `main`.
 Si falla, deja el repo y el log para inspeccionar.
 
+### Dogfood
+
+Primera corrida real con tres tareas sobre una landing estática: pricing, theme
+toggle y formulario de contacto. Resultados y hallazgos en
+[`docs/DOGFOOD.md`](docs/DOGFOOD.md).
+
 ## Inicio rápido
 
 Requisitos: **Rust 1.88+**, **Node 22+**, **git** y al menos un agente CLI en el

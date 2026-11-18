@@ -83,4 +83,7 @@ stop the process first or run `oni-daemon\target\debug\oni-daemon.exe` directly.
   write. Migrate to SQLite when attempt history matters.
 - No push notifications, no interactive PTY, no Web Push, no CI matrix yet.
 - Patch review is capped at 512 KB and only available while the worktree exists.
+- Verification runs inside the agent's worktree, so an agent can edit the
+  verify script or test config. Treat green checks as a signal, review those
+  files, and add a protected verify copy or tamper check later.
 - PWA install over LAN requires HTTPS (Tailscale Serve/TLS proxy).

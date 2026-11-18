@@ -72,6 +72,11 @@ da52744 demo: add favicon
    Conviene un botón de copiar o permitir scroll horizontal.
 5. **Formulario de contacto.** El estado de éxito deshabilita el submit hasta
    recargar; es aceptable para la demo, pero se puede resetear.
+6. **La verificación vive en el worktree.** `verify.mjs` está en el repo y el
+   agente podría editarlo para hacer pasar el check. En esta corrida el prompt
+   lo prohibió y el diff no lo tocó, pero no es una garantía técnica. Para el
+   MVP: revisar siempre los archivos de test/CI y, más adelante, correr una copia
+   protegida del verificador o marcar sus cambios como bloqueantes.
 
 ## Reproducir
 

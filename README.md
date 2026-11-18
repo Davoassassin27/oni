@@ -60,6 +60,9 @@ El script crea un repo temporal, registra el proyecto, lanza una tarea, espera
 `review`, valida el patch, mergea y comprueba que el archivo llegó a `main`.
 Si falla, deja el repo y el log para inspeccionar.
 
+En GitHub Actions, `.github/workflows/ci.yml` corre formato, tests, build de la
+PWA y este smoke con agente fake en Linux; no consume tokens de modelo.
+
 ### Dogfood
 
 Primera corrida real con tres tareas sobre una landing estática: pricing, theme

@@ -1,0 +1,86 @@
+name: CI
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: oni-daemon
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: Rust format
+        run: cargo fmt --manifest-path oni-daemon/Cargo.toml -- --check
+
+      - name: Rust tests
+        run: cargo test --manifest-path oni-daemon/Cargo.toml --locked
+
+      - name: PWA build
+        run: npm run build --workspace @oni/pwa
+
+  smoke:
+    runs-on: ubuntu-latest
+    needs: checks
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: oni-daemon
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+
+      - name: PWA build
+        run: npm run build --workspace @oni/pwa
+
+      - name: Daemon build
+        run: cargo build --manifest-path oni-daemon/Cargo.toml --locked
+
+      - name: Start daemon
+        run: |
+          export ONI_DATA_DIR="$RUNNER_TEMP/oni-smoke-data"
+          export ONI_PORT=7766
+          ./oni-daemon/target/debug/oni-daemon > "$RUNNER_TEMP/oni-daemon.log" 2>&1 &
+          echo $! > "$RUNNER_TEMP/oni-daemon.pid"
+          for i in $(seq 1 30); do
+            if curl -fsS http://127.0.0.1:7766/api/health > /dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          cat "$RUNNER_TEMP/oni-daemon.log"
+          exit 1
+
+      - name: Smoke test
+        run: npm run smoke
+
+      - name: Stop daemon
+        if: always()
+        run: |
+          if [ -f "$RUNNER_TEMP/oni-daemon.pid" ]; then
+            kill "$(cat "$RUNNER_TEMP/oni-daemon.pid")" || true
+          fi

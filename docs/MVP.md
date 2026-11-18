@@ -231,6 +231,7 @@ GET    /api/events            (SSE, todos los eventos)
 | **M1 — Walking skeleton** | Proyecto + tarea + worktree + agente fake que streamea + verify | Una tarea llega a `review` sin tocar git a mano. |
 | **M2 — Agente real** | Preset OpenCode, loop de retry, stop real | 3 tareas reales completadas en un repo de prueba. |
 | **M3 — Review/Merge** | Diff, merge, discard, limpieza | 3 merges limpios; `main` intacto. |
+| **M3.5 — CI** | Checks + smoke con agente fake en Linux | Los jobs pasan en GitHub Actions sin tokens. |
 | **M4 — Phone-ready** | PWA install, token, reconexión, LAN + HTTPS | Tarea lanzada y mergeada desde el teléfono con la PWA instalada (requiere HTTPS: Tailscale Serve o proxy TLS). |
 | **M5 — Dogfood** | 10 tareas reales, métricas, fixes | Hipótesis validada o pivot. |
 
@@ -246,7 +247,7 @@ público:** M5 + licencia + onboarding de 5 minutos.
 | El agente "pasa" tests pero rompe el diseño | Review humana obligatoria; mostrar diff, no solo verde. |
 | Loop quema tokens sin avanzar | Detectar output idéntico / sin cambios en el worktree; cortar. |
 | Agentes interactivos piden permisos | Presets headless documentados; nunca prometer TUI interactiva en v0.1. |
-| Windows/macOS/Linux divergen | CI matrix desde M2; probar kill de proceso y paths. |
+| Windows/macOS/Linux divergen | CI en Linux desde M3.5; matriz Windows/macOS y kill de proceso/paths desde M4. |
 | El logo deriva de una referencia con licencia | Ver `docs/BRAND.md`: licenciar o redibujar antes de uso comercial. |
 | Exponer el daemon a internet | Bind localhost por defecto; token; guía Tailscale, no túnel propio. |
 

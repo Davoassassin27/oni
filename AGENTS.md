@@ -81,7 +81,8 @@ stop the process first or run `oni-daemon\target\debug\oni-daemon.exe` directly.
   `--auto`); Claude preset is implemented but not exercised end-to-end yet.
 - JSON persistence is best-effort atomic; crash during save can lose the last
   write. Migrate to SQLite when attempt history matters.
-- No push notifications, no interactive PTY, no Web Push, no CI matrix yet.
+- No push notifications, no interactive PTY, no Web Push yet. CI runs checks and
+  a fake-agent smoke on Linux; no Windows/macOS matrix yet.
 - Patch review is capped at 512 KB and only available while the worktree exists.
 - Verification runs inside the agent's worktree, so an agent can edit the
   verify script or test config. Treat green checks as a signal, review those

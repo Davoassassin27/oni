@@ -151,6 +151,8 @@ async function main() {
 
 function initRepo() {
   git(["init", "-b", "main"]);
+  git(["config", "user.name", "Oni Smoke"]);
+  git(["config", "user.email", "smoke@oni.local"]);
   writeFileSync(join(repoDir, "README.md"), "# smoke\n");
   writeFileSync(
     join(repoDir, "verify.js"),

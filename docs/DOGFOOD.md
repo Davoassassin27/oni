@@ -61,9 +61,9 @@ da52744 demo: add favicon
    tenía crédito. Se dejó `opencode-go/beam-free` como default en
    `~/.config/opencode/opencode.jsonc` (backup: `opencode.jsonc.bak-oni`).
    Oni todavía no fija modelo por tarea; eso queda para Juniperus.
-2. **Retry no ejercitado.** Las tres tareas pasaron a la primera. El camino de
-   fallo y reintento sigue cubierto por el test con agente fake, pero falta
-   forzarlo en un repo real.
+2. **Reintento verificado en la segunda ronda.** Las tres tareas limpias
+   pasaron a la primera; el camino de fallo y reinyección del error se forzó
+   después con un agente custom. Ver «Segunda ronda: fallos controlados».
 3. **Animación de reveal.** Las secciones debajo del fold no aparecían en un
    screenshot full-page porque el `IntersectionObserver` no las había visto.
    Se agregó un fallback `<noscript>` y el screenshot se toma forzando
@@ -77,6 +77,61 @@ da52744 demo: add favicon
    lo prohibió y el diff no lo tocó, pero no es una garantía técnica. Para el
    MVP: revisar siempre los archivos de test/CI y, más adelante, correr una copia
    protegida del verificador o marcar sus cambios como bloqueantes.
+
+## Segunda ronda: fallos controlados
+
+Después de los tres tasks limpios se probaron los caminos de fallo con el mismo
+daemon y el mismo repo:
+
+### Reintento por verificación
+
+- Task `3418d9a4-87fd-46bf-859f-c8fe6e6fffb6`, agente custom, `maxIterations: 3`.
+- El verificador generó un token al azar en su primera llamada, falló a propósito
+  y lo devolvió en el error.
+- Log de Oni:
+
+```text
+== attempt 1/3 · custom ==
+agent: prompt received, 556 bytes
+agent: retry token in prompt = none
+
+== verify == 
+verify: first check rejected on purpose. Add exactly "RETRY_RAL0IG" ...
+
+== verification failed · retrying (2/3) ==
+
+== attempt 2/3 · custom ==
+agent: prompt received, 781 bytes
+agent: retry token in prompt = RETRY_RAL0IG
+
+== verify ==
+verify: retry token RETRY_RAL0IG present, ok
+```
+
+- El prompt pasó de 556 a 781 bytes: el error de verificación se reinyectó y el
+  agente lo usó. Estado final `review` en el intento 2/3. Se descartó después.
+
+**Hallazgo:** con OpenCode, el agente ejecutó el verificador por su cuenta,
+leyó el error y corrigió antes de que Oni hiciera su propia verificación, así
+que no hubo reintento. Para probar el loop de forma determinista se usó un
+agente custom que no corre el acceptance command.
+
+### Stop con proceso colgado
+
+- Task `07ccd3f0-0d4e-4aec-9285-d8fb956d772f`, agente custom con
+  `setInterval(() => {}, 1000)`.
+- Antes de stop: `node.exe` PID 17784 corriendo el script.
+- Después de stop: ningún proceso con ese script; estado `stopped`; log con
+  `== stopped by user ==`. El worktree quedó intacto.
+- Detalle de API: `POST /stop` devolvió `acting` porque el stop es asíncrono;
+  el estado se asentó en `stopped` ~2 s después vía SSE.
+
+### Discard
+
+- Task `64012aba-f143-46db-9bc7-7dbdd1c6726d`, en `review` con worktree.
+- Tras `POST /discard`: estado `discarded`, worktree eliminado, branch borrada,
+  `GET /patch` responde 409 (`the patch is no longer available...`) y el repo
+  quedó limpio.
 
 ## Reproducir
 
@@ -95,9 +150,10 @@ Luego abrir <http://127.0.0.1:7766> (PWA) y <http://127.0.0.1:8080> (demo).
 
 ## Próximos pasos
 
-- Forzar un fallo de verificación para ejercitar retry y el presupuesto de
-  iteraciones en un repo real.
-- Probar `stop` y `discard` con un agente colgado.
 - Smoke E2E en CI con agente fake, sin tokens.
 - Probar el preset de Claude Code.
 - Embeber la PWA en el binario release.
+- Copia protegida del verificador o detección de cambios en test/CI para que
+  un agente no pueda debilitar el check.
+- Hacer que `POST /stop` devuelva el estado ya detenido (o `202`) en lugar del
+  estado previo.

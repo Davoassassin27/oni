@@ -37,6 +37,7 @@ pulido, tests de integración y las piezas marcadas en
 - Persistencia de estado entre reinicios; las tareas interrumpidas se marcan
   como `failed` en vez de quedar colgadas.
 - PWA instalable, dark-first, con reconexión y token opcional para LAN.
+- La PWA queda embebida en el binario: no hace falta `dist/` en runtime.
 
 ### Smoke test automatizado
 
@@ -82,6 +83,19 @@ cargo run --manifest-path oni-daemon/Cargo.toml
 
 Abrí <http://127.0.0.1:7766>. Los datos viven en `~/.oni` (en Windows,
 `C:\Users\<vos>\.oni`).
+
+### Binario único
+
+La PWA se compila dentro del daemon, así que un solo ejecutable sirve la API y
+la app; no necesitás `clients/pwa/dist` en runtime:
+
+```bash
+npm run build                                      # genera dist/ antes de compilar
+cargo build --release --manifest-path oni-daemon/Cargo.toml
+.\oni-daemon\target\release\oni-daemon.exe
+```
+
+`ONI_PWA_DIR` sirve para sobreescribir eso y servir un build desde disco.
 
 ### Desarrollo
 
@@ -166,7 +180,7 @@ queda en review.
 | `ONI_PORT` | `7766` | Puerto HTTP. |
 | `ONI_TOKEN` | vacío | Si está, protege `/api` con bearer token. |
 | `ONI_DATA_DIR` | `~/.oni` | Estado, logs y worktrees. |
-| `ONI_PWA_DIR` | `clients/pwa/dist` | Build estático servido por el daemon. |
+| `ONI_PWA_DIR` | vacío | Sirve la PWA desde disco; vacío usa la PWA embebida. |
 | `ONI_AGENT_TIMEOUT_SECS` | `1800` | Timeout por intento de agente. |
 | `ONI_VERIFY_TIMEOUT_SECS` | `600` | Timeout de la verificación. |
 | `ONI_OPENCODE_MODEL` | vacío | `provider/model` opcional para `opencode run --model`. |

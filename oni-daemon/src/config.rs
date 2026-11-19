@@ -10,7 +10,7 @@ pub struct Config {
     pub data_dir: PathBuf,
     pub logs_dir: PathBuf,
     pub worktrees_dir: PathBuf,
-    pub pwa_dir: PathBuf,
+    pub pwa_dir: Option<PathBuf>,
     pub agent_timeout_secs: u64,
     pub verify_timeout_secs: u64,
 }
@@ -32,9 +32,7 @@ impl Config {
         let logs_dir = data_dir.join("logs");
         let worktrees_dir = data_dir.join("worktrees");
 
-        let pwa_dir = std::env::var_os("ONI_PWA_DIR")
-            .map(PathBuf::from)
-            .unwrap_or_else(|| cwd.join("clients").join("pwa").join("dist"));
+        let pwa_dir = std::env::var_os("ONI_PWA_DIR").map(PathBuf::from);
 
         let host = std::env::var("ONI_HOST").unwrap_or_else(|_| "127.0.0.1".into());
         let port = std::env::var("ONI_PORT")

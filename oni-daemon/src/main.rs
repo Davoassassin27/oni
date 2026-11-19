@@ -3,6 +3,7 @@ mod config;
 mod error;
 mod git;
 mod model;
+mod pwa;
 mod runner;
 mod state;
 mod store;
@@ -66,18 +67,23 @@ async fn main() -> Result<()> {
         api::auth,
     ));
 
-    let index = pwa_dir.join("index.html");
-    let app = Router::new()
-        .nest("/api", api)
-        .fallback_service(ServeDir::new(&pwa_dir).fallback(ServeFile::new(&index)))
-        .layer(TraceLayer::new_for_http());
+    let router = Router::new().nest("/api", api);
 
-    if !pwa_dir.exists() {
-        tracing::warn!(
-            path = %pwa_dir.display(),
-            "PWA build not found; run `npm run build` (API still works)"
-        );
-    }
+    let app = match &pwa_dir {
+        Some(dir) => {
+            let index = dir.join("index.html");
+            if !dir.exists() {
+                tracing::warn!(
+                    path = %dir.display(),
+                    "PWA directory not found; API still works"
+                );
+            }
+            router.fallback_service(ServeDir::new(dir).fallback(ServeFile::new(index)))
+        }
+        None => router.fallback_service(Router::new().fallback(pwa::serve)),
+    };
+
+    let app = app.layer(TraceLayer::new_for_http());
 
     let listener = TcpListener::bind(&bind_address)
         .await
@@ -85,7 +91,13 @@ async fn main() -> Result<()> {
 
     tracing::info!("ONI daemon v{app_version}");
     tracing::info!("  api:  http://{bind_address}/api");
-    tracing::info!("  pwa:  http://{bind_address}");
+    tracing::info!(
+        "  pwa:  {} (http://{bind_address})",
+        pwa_dir
+            .as_ref()
+            .map(|dir| format!("disk {}", dir.display()))
+            .unwrap_or_else(|| "embedded".to_string())
+    );
     tracing::info!("  data: {}", data_dir.display());
     tracing::info!(
         "  auth: {}",

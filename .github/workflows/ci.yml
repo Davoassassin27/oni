@@ -26,14 +26,14 @@ jobs:
 
       - run: npm ci
 
+      - name: PWA build
+        run: npm run build --workspace @oni/pwa
+
       - name: Rust format
         run: cargo fmt --manifest-path oni-daemon/Cargo.toml -- --check
 
       - name: Rust tests
         run: cargo test --manifest-path oni-daemon/Cargo.toml --locked
-
-      - name: PWA build
-        run: npm run build --workspace @oni/pwa
 
   smoke:
     runs-on: ubuntu-latest

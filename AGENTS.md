@@ -30,6 +30,10 @@ cargo test --manifest-path oni-daemon/Cargo.toml
 npm run build --workspace @oni/pwa
 ```
 
+The PWA is embedded into the daemon at compile time, so run `npm run build`
+before `cargo build` when `clients/pwa/dist` changed. `ONI_PWA_DIR` overrides
+the embed and serves that directory instead.
+
 On Windows, `cargo run` fails to replace the binary while a daemon is running:
 stop the process first or run `oni-daemon\target\debug\oni-daemon.exe` directly.
 
@@ -38,6 +42,7 @@ stop the process first or run `oni-daemon\target\debug\oni-daemon.exe` directly.
 | Path | Responsibility |
 |---|---|
 | `oni-daemon/src/api.rs` | REST routes, SSE, token middleware. |
+| `oni-daemon/src/pwa.rs` | Embedded PWA assets, disk override, SPA fallback. |
 | `oni-daemon/src/runner.rs` | Task state machine, agent spawn, log stream, verify + retry. |
 | `oni-daemon/src/git.rs` | Worktree, merge, commit, diff, slug/branch. |
 | `oni-daemon/src/store.rs` | JSON state persistence; interrupted-task recovery. |

@@ -103,6 +103,7 @@ notificaciones, terminal interactiva) salva al producto.
 - [x] Review con diff stat, archivos, patch unificado y salida de verificación.
 - [x] Merge / Discard atómicos, con chequeo de repo limpio.
 - [x] PWA mobile-first instalable, estado en vivo, reconexión.
+- [x] PWA embebida en el binario; `ONI_PWA_DIR` permite servir desde disco.
 - [x] Persistencia de tareas en SQLite o JSON atómico (sobrevive reinicios).
 - [x] Bind a `127.0.0.1` por defecto; modo LAN explícito con token.
 

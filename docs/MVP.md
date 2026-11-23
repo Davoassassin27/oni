@@ -8,19 +8,32 @@
 
 ## 0. Estado de implementación (v0.1)
 
-El **walking skeleton end-to-end ya funciona** y fue probado en Windows con un
-repo de prueba y un agente fake:
+El **walking skeleton end-to-end ya funciona** y fue probado en Windows con
+OpenCode real y un modelo gratuito:
 
-- proyecto → tarea → worktree → agente (custom, stdin) → verify → retry
-  automático → review → merge / discard;
+- proyecto → tarea → worktree → agente → verify → retry automático → review →
+  merge / discard;
 - stop real (mata el árbol de procesos); el worktree queda;
 - dispatch y merge desde la PWA mobile;
 - revisión con patch unificado y edición/borrado de proyectos;
-- deep links del SPA, SSE, persistencia entre reinicios y token de API.
+- deep links del SPA, SSE, persistencia entre reinicios y token de API;
+- dogfood con 3 tareas reales sobre una landing (pricing, theme, contact) y
+  pruebas forzadas de retry, stop y discard;
+- CI en Linux con formato, tests, build de la PWA y smoke con agente fake;
+- PWA embebida en el binario: un solo ejecutable sirve API y app.
 
-Pendiente antes de llamarlo MVP cerrado: probar los presets reales de OpenCode y
-Claude Code, test en macOS/Linux, instalación real de la PWA en un teléfono,
-push notifications y una pasada de UX/errores.
+Pendiente antes de llamarlo MVP cerrado:
+
+- instalación real de la PWA en un teléfono (requiere HTTPS/Tailscale) y Web
+  Push;
+- dogfood de 10 tareas y métricas;
+- copia protegida del verificador (hoy el agente puede editar el test);
+- matriz Windows/macOS y empaquetado release/instalador;
+- **CLI**: todavía no existe. La interfaz actual es la PWA + la API REST; el
+  binario `oni-daemon` solo arranca el servidor.
+
+Claude Code queda implementado pero no probado end-to-end, fuera de prioridad
+por ahora.
 
 ---
 

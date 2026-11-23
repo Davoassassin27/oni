@@ -38,6 +38,8 @@ pulido, tests de integración y las piezas marcadas en
   como `failed` en vez de quedar colgadas.
 - PWA instalable, dark-first, con reconexión y token opcional para LAN.
 - La PWA queda embebida en el binario: no hace falta `dist/` en runtime.
+- CLI `oni` para health, proyectos, tareas, dispatch, watch, log, patch, merge,
+  stop y discard.
 
 ### Smoke test automatizado
 
@@ -96,6 +98,28 @@ cargo build --release --manifest-path oni-daemon/Cargo.toml
 ```
 
 `ONI_PWA_DIR` sirve para sobreescribir eso y servir un build desde disco.
+
+### CLI
+
+El mismo build genera `oni-daemon` y `oni`. El CLI habla con el daemon por HTTP:
+
+```bash
+cargo build --manifest-path oni-daemon/Cargo.toml
+
+.\oni-daemon\target\debug\oni.exe health
+.\oni-daemon\target\debug\oni.exe projects
+.\oni-daemon\target\debug\oni.exe tasks
+.\oni-daemon\target\debug\oni.exe task <id>
+.\oni-daemon\target\debug\oni.exe log <id> --tail 40
+.\oni-daemon\target\debug\oni.exe new --project <proyecto> --watch "agregar FAQ"
+.\oni-daemon\target\debug\oni.exe patch <id> --stat
+.\oni-daemon\target\debug\oni.exe merge <id>
+.\oni-daemon\target\debug\oni.exe stop <id>
+.\oni-daemon\target\debug\oni.exe discard <id>
+```
+
+Acepta `--url` o `ONI_URL`, `--token` o `ONI_TOKEN`, y `--json` para scripting.
+Los IDs de tarea se pueden abreviar a 8 caracteres.
 
 ### Desarrollo
 

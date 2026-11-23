@@ -21,6 +21,8 @@ OpenCode real y un modelo gratuito:
   pruebas forzadas de retry, stop y discard;
 - CI en Linux con formato, tests, build de la PWA y smoke con agente fake;
 - PWA embebida en el binario: un solo ejecutable sirve API y app.
+- CLI `oni` como cliente de la API: health, projects, tasks, task, log, new,
+  watch, patch, stop, retry, merge y discard.
 
 Pendiente antes de llamarlo MVP cerrado:
 
@@ -28,9 +30,7 @@ Pendiente antes de llamarlo MVP cerrado:
   Push;
 - dogfood de 10 tareas y métricas;
 - copia protegida del verificador (hoy el agente puede editar el test);
-- matriz Windows/macOS y empaquetado release/instalador;
-- **CLI**: todavía no existe. La interfaz actual es la PWA + la API REST; el
-  binario `oni-daemon` solo arranca el servidor.
+- matriz Windows/macOS y empaquetado release/instalador.
 
 Claude Code queda implementado pero no probado end-to-end, fuera de prioridad
 por ahora.

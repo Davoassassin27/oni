@@ -133,6 +133,51 @@ agente custom que no corre el acceptance command.
   `GET /patch` responde 409 (`the patch is no longer available...`) y el repo
   quedó limpio.
 
+## Tercera ronda: verificación protegida
+
+Se probó el guard con un repo temporal (`oni-guard-repo`) cuyo `verify.mjs`
+exige `feature.txt`.
+
+### Agente que implementa y debilita el verificador
+
+- Task `478aaf02-...`, agente custom: escribe `feature.txt` y reemplaza
+  `verify.mjs` por un script que siempre pasa.
+- Antes de verificar, Oni restauró `verify.mjs` desde `main`:
+
+```text
+== verify · node verify.mjs ==
+== oni ==
+verifier verify.mjs restored from main
+verify: feature.txt ok
+```
+
+- El diff final incluyó `verify.mjs`; Oni lo marcó como sensible y bloqueó el
+  merge:
+
+```text
+== warn ==
+verification-sensitive files changed:
+  verify.mjs
+merge requires explicit acceptance
+```
+
+- `oni merge` → `409 verification-sensitive files changed`.
+- `oni accept <id>` → `acceptedByHuman: true`; `oni merge` → `merged`.
+- En la PWA se vio la tarjeta roja “Verification files changed”, el botón Merge
+  deshabilitado, y después de aceptar, la tarjeta dorada y el merge habilitado.
+
+### Agente que solo debilita el verificador
+
+- Task `e030b1a1-...`, agente custom que solo reemplaza `verify.mjs` sin crear
+  `feature.txt`.
+- Oni restauró el verificador base, que falló con `verify: missing feature.txt`;
+  la tarea terminó `failed` en 1/1. Se descartó.
+
+Esto cubre el bypass más directo: cambiar el script de verificación. La
+detección de archivos sensibles (tests, CI, lockfiles, configs) sigue siendo una
+heurística; un helper importado por el verificador podría no detectarse, por eso
+el review humano sigue siendo obligatorio.
+
 ## Reproducir
 
 ```powershell
@@ -150,10 +195,9 @@ Luego abrir <http://127.0.0.1:7766> (PWA) y <http://127.0.0.1:8080> (demo).
 
 ## Próximos pasos
 
-- Smoke E2E en CI con agente fake, sin tokens.
-- Probar el preset de Claude Code.
-- Embeber la PWA en el binario release.
-- Copia protegida del verificador o detección de cambios en test/CI para que
-  un agente no pueda debilitar el check.
+- Agregar el guard smoke a CI (hoy se probó a mano).
+- Dogfood de 10 tareas y métricas.
+- Instalación de la PWA en teléfono con HTTPS y Web Push.
+- Matriz Windows/macOS y empaquetado release/instalador.
 - Hacer que `POST /stop` devuelva el estado ya detenido (o `202`) en lugar del
   estado previo.

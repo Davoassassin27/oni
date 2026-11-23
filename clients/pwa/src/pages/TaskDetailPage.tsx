@@ -92,6 +92,20 @@ export default function TaskDetailPage() {
     onError: (error: Error) => toast(error.message, "error"),
   });
 
+  const acceptVerification = useMutation({
+    mutationFn: () => {
+      if (!id) throw new Error("missing task id");
+      return api.acceptVerification(id);
+    },
+    onSuccess: (updated) => {
+      queryClient.setQueryData(["task", updated.id], updated);
+      void queryClient.invalidateQueries({ queryKey: ["tasks"] });
+      void queryClient.invalidateQueries({ queryKey: ["task", updated.id] });
+      toast("Verification changes accepted", "success");
+    },
+    onError: (error: Error) => toast(error.message, "error"),
+  });
+
   const copy = async (value: string, label: string) => {
     const ok = await copyText(value);
     toast(ok ? `${label} copied` : "Copy failed", ok ? "success" : "error");
@@ -126,6 +140,9 @@ export default function TaskDetailPage() {
   const review = task.state === "review";
   const failed = task.state === "failed";
   const stopped = task.state === "stopped";
+  const verificationBlocked = Boolean(
+    task.verification?.tampered && !task.verification.acceptedByHuman,
+  );
 
   return (
     <div className="animate-rise">
@@ -150,6 +167,52 @@ export default function TaskDetailPage() {
       </header>
 
       <Pipeline task={task} />
+
+      {task.verification?.tampered ? (
+        <section
+          className={cn(
+            "mt-5 rounded-xl border p-4",
+            verificationBlocked
+              ? "border-vermilion/30 bg-vermilion/5"
+              : "border-kintsugi/25 bg-kintsugi/5",
+          )}
+        >
+          <div
+            className={cn(
+              "flex items-center gap-2",
+              verificationBlocked ? "text-vermilion" : "text-kintsugi",
+            )}
+          >
+            <AlertIcon className="h-4 w-4" />
+            <h2 className="font-mono text-[10px] uppercase tracking-[0.14em]">
+              {verificationBlocked
+                ? "Verification files changed"
+                : "Verification changes accepted"}
+            </h2>
+          </div>
+          <p className="mt-2 text-xs leading-relaxed text-ceniza">
+            {verificationBlocked
+              ? "The agent modified files that can weaken the check (tests, CI, config, or the verifier). Review the patch and accept explicitly before merging."
+              : "A human accepted the changes to the verification files."}
+          </p>
+          <ul className="mt-3 space-y-1 font-mono text-[10px] text-hueso/80">
+            {task.verification.files.map((file) => (
+              <li key={file}>{file}</li>
+            ))}
+          </ul>
+          {verificationBlocked && review ? (
+            <Button
+              variant="secondary"
+              size="sm"
+              className="mt-4"
+              onClick={() => acceptVerification.mutate()}
+              loading={acceptVerification.isPending}
+            >
+              Accept verification changes
+            </Button>
+          ) : null}
+        </section>
+      ) : null}
 
       <section className="mt-6 grid grid-cols-2 gap-px overflow-hidden rounded-xl border border-hueso/10 bg-hueso/10 md:grid-cols-4">
         <Meta label="Branch">
@@ -312,6 +375,7 @@ export default function TaskDetailPage() {
             className="flex-[1.4] md:flex-none"
             onClick={() => setDialog("merge")}
             loading={action.isPending && action.variables === "merge"}
+            disabled={verificationBlocked}
           >
             <MergeIcon className="h-4 w-4" />
             Merge

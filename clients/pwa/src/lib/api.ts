@@ -91,6 +91,8 @@ export const api = {
     request<Task>(`/tasks/${id}/retry`, { method: "POST" }),
   merge: (id: string) =>
     request<Task>(`/tasks/${id}/merge`, { method: "POST" }),
+  acceptVerification: (id: string) =>
+    request<Task>(`/tasks/${id}/accept-verification`, { method: "POST" }),
   discard: (id: string) =>
     request<Task>(`/tasks/${id}/discard`, { method: "POST" }),
   eventsUrl: () => {

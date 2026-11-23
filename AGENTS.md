@@ -62,7 +62,9 @@ stop the process first or run `oni-daemon\target\debug\oni-daemon.exe` directly.
 1. **No agent writes to the base branch.** Every task gets a worktree and an
    `oni/<slug>` branch. Merge is an explicit human action.
 2. **Verification is mandatory before review.** The loop is bounded
-   (`maxIterations`, agent timeout, verify timeout).
+   (`maxIterations`, agent timeout, verify timeout). File-based verifiers are
+   restored from the base branch, and changes to tests/CI/config block merge
+   until a human accepts them.
 3. **Stop must kill the process tree**, not just the shell. On Windows use
    `taskkill /T /F`; on Unix signal the process.
 4. **No CORS.** The PWA is same-origin. Adding permissive CORS lets any web page
@@ -94,7 +96,8 @@ stop the process first or run `oni-daemon\target\debug\oni-daemon.exe` directly.
 - No push notifications, no interactive PTY, no Web Push yet. CI runs checks and
   a fake-agent smoke on Linux; no Windows/macOS matrix yet.
 - Patch review is capped at 512 KB and only available while the worktree exists.
-- Verification runs inside the agent's worktree, so an agent can edit the
-  verify script or test config. Treat green checks as a signal, review those
-  files, and add a protected verify copy or tamper check later.
+- Verification is protected for file-based acceptance commands, and sensitive
+  test/CI/config changes require explicit acceptance. Heuristics can miss
+  helpers imported by a verifier, so human review of the patch remains
+  mandatory.
 - PWA install over LAN requires HTTPS (Tailscale Serve/TLS proxy).

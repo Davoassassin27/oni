@@ -42,6 +42,7 @@ pub fn router(state: AppState) -> Router {
         .route("/tasks/{id}/retry", post(retry_task))
         .route("/tasks/{id}/merge", post(merge_task))
         .route("/tasks/{id}/discard", post(discard_task))
+        .route("/tasks/{id}/accept-verification", post(accept_verification))
         .route("/events", get(events))
         .with_state(state)
 }
@@ -347,6 +348,7 @@ async fn create_task(
         finished_at: None,
         last_error: None,
         diff: None,
+        verification: Default::default(),
     };
 
     state.store.create_task(task.clone()).await?;
@@ -501,6 +503,7 @@ async fn retry_task(
             task.state = TaskState::Queued;
             task.last_error = None;
             task.finished_at = None;
+            task.verification = Default::default();
             task.max_iterations = task.max_iterations.max(task.iteration + 1);
         })
         .await?
@@ -526,6 +529,12 @@ async fn merge_task(
         return Err(AppError::conflict("only tasks in review can be merged"));
     }
 
+    if task.verification.tampered && !task.verification.accepted_by_human {
+        return Err(AppError::conflict(
+            "verification-sensitive files changed; review the patch and accept the verification changes before merging",
+        ));
+    }
+
     git::merge_branch(Path::new(&task.repo_path), &task.base_branch, &task.branch)
         .await
         .map_err(|error| AppError::conflict(format!("{error:#}")))?;
@@ -545,6 +554,38 @@ async fn merge_task(
 
     state.emit_task(merged.clone()).await;
     Ok(Json(merged))
+}
+
+async fn accept_verification(
+    State(state): State<AppState>,
+    AxumPath(id): AxumPath<Uuid>,
+) -> Result<Json<Task>, AppError> {
+    let task = state
+        .store
+        .get_task(id)
+        .await
+        .ok_or_else(|| AppError::not_found("task not found"))?;
+
+    if task.state != TaskState::Review {
+        return Err(AppError::conflict(
+            "only tasks in review can accept verification changes",
+        ));
+    }
+
+    if !task.verification.tampered || task.verification.accepted_by_human {
+        return Ok(Json(task));
+    }
+
+    let accepted = state
+        .store
+        .update_task(id, |task| {
+            task.verification.accepted_by_human = true;
+        })
+        .await?
+        .ok_or_else(|| AppError::not_found("task not found"))?;
+
+    state.emit_task(accepted.clone()).await;
+    Ok(Json(accepted))
 }
 
 async fn discard_task(

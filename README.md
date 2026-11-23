@@ -33,6 +33,8 @@ pulido, tests de integración y las piezas marcadas en
   reintentar hasta el límite.
 - Ver diff stat, archivos cambiados y el **patch unificado** con hunks.
 - Editar y borrar proyectos; borrar mantiene el historial de tareas.
+- Verificación protegida: el verificador se restaura desde la rama base y los
+  cambios en tests/CI/config requieren aceptación humana antes del merge.
 - Stop real (mata el árbol de procesos), retry, discard y merge `--no-ff`.
 - Persistencia de estado entre reinicios; las tareas interrumpidas se marcan
   como `failed` en vez de quedar colgadas.
@@ -113,13 +115,15 @@ cargo build --manifest-path oni-daemon/Cargo.toml
 .\oni-daemon\target\debug\oni.exe log <id> --tail 40
 .\oni-daemon\target\debug\oni.exe new --project <proyecto> --watch "agregar FAQ"
 .\oni-daemon\target\debug\oni.exe patch <id> --stat
+.\oni-daemon\target\debug\oni.exe accept <id>
 .\oni-daemon\target\debug\oni.exe merge <id>
 .\oni-daemon\target\debug\oni.exe stop <id>
 .\oni-daemon\target\debug\oni.exe discard <id>
 ```
 
 Acepta `--url` o `ONI_URL`, `--token` o `ONI_TOKEN`, y `--json` para scripting.
-Los IDs de tarea se pueden abreviar a 8 caracteres.
+Los IDs de tarea se pueden abreviar a 8 caracteres. `accept` solo hace falta
+cuando la tarea quedó marcada con cambios sensibles en la verificación.
 
 ### Desarrollo
 
@@ -195,6 +199,10 @@ queda en review.
   funciona como web app; para instalar, usá Tailscale Serve o un proxy TLS.
 - Los comandos de agente y de verificación son code execution. Conectá solo
   repos que controlás.
+- La verificación restaura desde la rama base el archivo del verificador
+  referenciado por el acceptance command. Los cambios en tests, CI, lockfiles o
+  configuración se muestran como sensibles y bloquean el merge hasta que un
+  humano los acepta explícitamente.
 
 ## Configuración
 
@@ -225,6 +233,7 @@ GET    /api/tasks/:id/patch
 POST   /api/tasks/:id/stop
 POST   /api/tasks/:id/retry
 POST   /api/tasks/:id/merge
+POST   /api/tasks/:id/accept-verification
 POST   /api/tasks/:id/discard
 GET    /api/events            (SSE)
 ```

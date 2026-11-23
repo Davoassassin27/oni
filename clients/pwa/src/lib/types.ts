@@ -47,6 +47,12 @@ export interface DiffPatch {
   truncated: boolean;
 }
 
+export interface VerificationGuard {
+  tampered: boolean;
+  files: string[];
+  acceptedByHuman: boolean;
+}
+
 export interface Task {
   id: string;
   projectId: string;
@@ -70,6 +76,7 @@ export interface Task {
   finishedAt: string | null;
   lastError: string | null;
   diff: DiffSummary | null;
+  verification?: VerificationGuard;
 }
 
 export interface Health {

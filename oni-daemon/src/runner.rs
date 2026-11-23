@@ -13,7 +13,7 @@ use tokio::time::timeout;
 use uuid::Uuid;
 
 use crate::git;
-use crate::model::{AgentPreset, ServerEvent, Task, TaskState};
+use crate::model::{AgentPreset, ServerEvent, Task, TaskState, VerificationGuard};
 use crate::state::{AppState, RunnerHandle, kill_tree};
 
 const OUTPUT_TAIL_LIMIT: usize = 8_000;
@@ -163,7 +163,10 @@ async fn run(state: &AppState, task_id: Uuid, handle: &RunnerHandle) -> Result<(
         )
         .await;
 
-        let verification = run_verify(state, &verifying, handle).await?;
+        let guards = protect_verifier(state, &verifying).await;
+        let verification_result = run_verify(state, &verifying, handle).await;
+        restore_verifier(guards).await;
+        let verification = verification_result?;
 
         if handle.stop.load(Ordering::SeqCst) {
             mark_stopped(state, task_id).await?;
@@ -202,9 +205,30 @@ async fn run(state: &AppState, task_id: Uuid, handle: &RunnerHandle) -> Result<(
                 }
             };
 
+            let tampered_files = diff
+                .as_ref()
+                .map(|diff| git::verification_changes(&diff.files, &verifying.acceptance))
+                .unwrap_or_default();
+            if !tampered_files.is_empty() {
+                append_log(
+                    state,
+                    task_id,
+                    &format!(
+                        "\n== warn ==\nverification-sensitive files changed:\n  {}\nmerge requires explicit acceptance\n",
+                        tampered_files.join("\n  ")
+                    ),
+                )
+                .await;
+            }
+
             save_and_emit(state, task_id, |task| {
                 task.state = TaskState::Review;
                 task.diff = diff;
+                task.verification = VerificationGuard {
+                    tampered: !tampered_files.is_empty(),
+                    files: tampered_files,
+                    accepted_by_human: false,
+                };
                 task.last_error = None;
                 task.finished_at = Some(Utc::now());
             })
@@ -371,6 +395,75 @@ async fn run_agent(
     let mut outcome = outcome;
     outcome.tail = tail.lock().await.clone();
     Ok(outcome)
+}
+
+struct TrustedVerifier {
+    path: PathBuf,
+    original: Option<Vec<u8>>,
+}
+
+async fn protect_verifier(state: &AppState, task: &Task) -> Vec<TrustedVerifier> {
+    let mut guards = Vec::new();
+
+    for relative in git::verifier_paths(&task.acceptance) {
+        let Some(trusted) = git::read_at(Path::new(&task.repo_path), &task.base_branch, &relative)
+            .await
+            .ok()
+            .flatten()
+        else {
+            continue;
+        };
+
+        let path = Path::new(&task.worktree_path).join(&relative);
+        let original = tokio::fs::read(&path).await.ok();
+        if let Some(parent) = path.parent()
+            && let Err(error) = tokio::fs::create_dir_all(parent).await
+        {
+            append_log(
+                state,
+                task.id,
+                &format!("\n== warn ==\ncannot protect verifier {relative}: {error}\n"),
+            )
+            .await;
+            continue;
+        }
+
+        if let Err(error) = tokio::fs::write(&path, &trusted).await {
+            append_log(
+                state,
+                task.id,
+                &format!("\n== warn ==\ncannot protect verifier {relative}: {error}\n"),
+            )
+            .await;
+            continue;
+        }
+
+        append_log(
+            state,
+            task.id,
+            &format!(
+                "\n== oni ==\nverifier {relative} restored from {}\n",
+                task.base_branch
+            ),
+        )
+        .await;
+        guards.push(TrustedVerifier { path, original });
+    }
+
+    guards
+}
+
+async fn restore_verifier(guards: Vec<TrustedVerifier>) {
+    for guard in guards {
+        match guard.original {
+            Some(bytes) => {
+                let _ = tokio::fs::write(&guard.path, bytes).await;
+            }
+            None => {
+                let _ = tokio::fs::remove_file(&guard.path).await;
+            }
+        }
+    }
 }
 
 async fn run_verify(state: &AppState, task: &Task, handle: &RunnerHandle) -> Result<RunOutcome> {

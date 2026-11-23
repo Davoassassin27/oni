@@ -91,6 +91,8 @@ enum Command {
     Retry { id: String },
     /// Merge the task branch into the base branch
     Merge { id: String },
+    /// Accept verification-file changes so the task can be merged
+    Accept { id: String },
     /// Discard the task and remove its worktree
     Discard { id: String },
     /// Print the unified patch, or just its stats
@@ -213,6 +215,14 @@ struct Project {
     agent: String,
 }
 
+#[derive(Debug, Default, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase", default)]
+struct VerificationGuard {
+    tampered: bool,
+    files: Vec<String>,
+    accepted_by_human: bool,
+}
+
 #[derive(Debug, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 struct Task {
@@ -233,6 +243,8 @@ struct Task {
     updated_at: String,
     last_error: Option<String>,
     diff: Option<DiffSummary>,
+    #[serde(default)]
+    verification: VerificationGuard,
 }
 
 #[derive(Debug, Deserialize, Serialize)]
@@ -312,6 +324,7 @@ fn run(cli: Cli) -> Result<()> {
         Command::Stop { id } => stop(&client, &id, json),
         Command::Retry { id } => retry(&client, &id, json),
         Command::Merge { id } => merge(&client, &id, json),
+        Command::Accept { id } => accept_verification(&client, &id, json),
         Command::Discard { id } => discard(&client, &id),
         Command::Patch { id, stat } => patch(&client, &id, stat, json),
     }
@@ -441,6 +454,26 @@ fn print_task(task: &Task) {
             diff.deletions
         );
     }
+    if task.verification.tampered {
+        println!(
+            "{:<12} {}",
+            "verification",
+            if task.verification.accepted_by_human {
+                "sensitive files changed (accepted by human)"
+            } else {
+                "SENSITIVE FILES CHANGED"
+            }
+        );
+        for file in &task.verification.files {
+            println!("             {file}");
+        }
+        if !task.verification.accepted_by_human {
+            println!(
+                "             merge blocked; run `oni accept {}`",
+                short_id(&task.id)
+            );
+        }
+    }
     if let Some(error) = &task.last_error {
         println!("{:<12} {}", "last error", first_line(error));
     }
@@ -551,11 +584,23 @@ fn watch(client: &Client, id: &str, interval: u64, json_output: bool) -> Result<
                         diff.deletions
                     );
                 }
-                println!(
-                    "next: oni patch {} or oni merge {}",
-                    short_id(&task.id),
-                    short_id(&task.id)
-                );
+                if task.verification.tampered && !task.verification.accepted_by_human {
+                    println!(
+                        "verification-sensitive files changed: {}",
+                        task.verification.files.join(", ")
+                    );
+                    println!(
+                        "next: oni patch {} then oni accept {} before merge",
+                        short_id(&task.id),
+                        short_id(&task.id)
+                    );
+                } else {
+                    println!(
+                        "next: oni patch {} or oni merge {}",
+                        short_id(&task.id),
+                        short_id(&task.id)
+                    );
+                }
             } else {
                 println!("finished: {} ({})", task.state, task.id);
                 if let Some(error) = &task.last_error {
@@ -625,6 +670,17 @@ fn merge(client: &Client, id: &str, json_output: bool) -> Result<()> {
         print_json(&task)?;
     } else {
         println!("merged: {} → {}", task.branch, task.base_branch);
+    }
+    Ok(())
+}
+
+fn accept_verification(client: &Client, id: &str, json_output: bool) -> Result<()> {
+    let id = resolve_task(client, id)?;
+    let task: Task = client.post_no_body(&format!("/tasks/{id}/accept-verification"))?;
+    if json_output {
+        print_json(&task)?;
+    } else {
+        println!("verification changes accepted: {}", task.id);
     }
     Ok(())
 }

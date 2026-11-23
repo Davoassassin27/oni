@@ -194,6 +194,138 @@ pub async fn diff_summary(repo: &Path, base_branch: &str, branch: &str) -> Resul
     })
 }
 
+pub async fn read_at(repo: &Path, rev: &str, path: &str) -> Result<Option<Vec<u8>>> {
+    if path.is_empty() || path.contains("..") || Path::new(path).is_absolute() {
+        return Ok(None);
+    }
+
+    let spec = format!("{rev}:{path}");
+    let output = run_git(repo, &["show", &spec]).await?;
+    if output.status.success() {
+        Ok(Some(output.stdout))
+    } else {
+        Ok(None)
+    }
+}
+
+/// File-looking tokens in the acceptance command. These are re-read from the
+/// base branch before verification so an agent cannot weaken its own checker.
+pub fn verifier_paths(acceptance: &str) -> Vec<String> {
+    let mut paths: Vec<String> = Vec::new();
+
+    for raw in acceptance.split_whitespace() {
+        let token = raw
+            .trim_matches(|character| matches!(character, '"' | '\'' | ';' | ','))
+            .trim_start_matches("./")
+            .trim_start_matches(".\\");
+
+        if token.is_empty()
+            || token.starts_with('-')
+            || token.starts_with('$')
+            || token.contains('=')
+            || token.contains(':')
+            || token.starts_with('/')
+            || token.starts_with('\\')
+            || token.contains("..")
+        {
+            continue;
+        }
+
+        if !(token.contains('.') || token.contains('/') || token.contains('\\')) {
+            continue;
+        }
+
+        let token = token.replace('\\', "/");
+        if !paths.contains(&token) {
+            paths.push(token);
+        }
+    }
+
+    paths
+}
+
+/// Changed files that can affect the verification contract: the verifier
+/// itself, tests, CI config, or dependency/lint config.
+pub fn verification_changes(files: &[FileChange], acceptance: &str) -> Vec<String> {
+    let protected = verifier_paths(acceptance);
+    files
+        .iter()
+        .filter(|file| {
+            let path = normalize_path(&file.path);
+            protected.iter().any(|candidate| {
+                let candidate = normalize_path(candidate);
+                path == candidate || path.ends_with(&format!("/{candidate}"))
+            }) || is_verification_file(&path)
+        })
+        .map(|file| file.path.clone())
+        .collect()
+}
+
+fn is_verification_file(path: &str) -> bool {
+    let normalized = normalize_path(path);
+    let components: Vec<&str> = normalized.split('/').collect();
+    if components.iter().any(|component| {
+        matches!(
+            *component,
+            "test"
+                | "tests"
+                | "__tests__"
+                | "spec"
+                | "specs"
+                | "e2e"
+                | ".github"
+                | ".gitlab"
+                | ".circleci"
+        )
+    }) {
+        return true;
+    }
+
+    let name = normalized.rsplit('/').next().unwrap_or(&normalized);
+    if name.contains(".test.")
+        || name.contains(".spec.")
+        || name.starts_with("test")
+        || name.starts_with("spec")
+        || name.contains("verify")
+    {
+        return true;
+    }
+
+    matches!(
+        name,
+        "package.json"
+            | "package-lock.json"
+            | "pnpm-lock.yaml"
+            | "yarn.lock"
+            | "bun.lockb"
+            | "cargo.toml"
+            | "cargo.lock"
+            | "pyproject.toml"
+            | "requirements.txt"
+            | "poetry.lock"
+            | "go.mod"
+            | "go.sum"
+            | "makefile"
+            | "justfile"
+            | "taskfile.yml"
+            | "tsconfig.json"
+            | ".eslintrc"
+            | ".prettierrc"
+    ) || name.starts_with("jest.config")
+        || name.starts_with("vitest.config")
+        || name.starts_with("playwright.config")
+        || name.starts_with("vite.config")
+        || name.starts_with("eslint.config")
+        || name.starts_with("pytest.ini")
+        || name.starts_with("tox.ini")
+}
+
+fn normalize_path(path: &str) -> String {
+    path.replace('\\', "/")
+        .trim_start_matches("./")
+        .to_ascii_lowercase()
+}
+
 const MAX_PATCH_BYTES: usize = 512 * 1024;
 
 pub async fn diff_patch(repo: &Path, base_branch: &str, branch: &str) -> Result<DiffPatch> {
@@ -402,5 +534,56 @@ index 3333333..4444444 100644
         assert_eq!(files[1].insertions, 1);
         assert_eq!(files[1].deletions, 0);
         assert!(files[0].patch.contains("@@ -1,3 +1,4 @@"));
+    }
+
+    #[test]
+    fn verifier_paths_extracts_file_tokens() {
+        assert_eq!(
+            verifier_paths("node verify.mjs pricing"),
+            vec!["verify.mjs"]
+        );
+        assert_eq!(
+            verifier_paths("python scripts/check.py --fast"),
+            vec!["scripts/check.py"]
+        );
+        assert!(verifier_paths("npm test").is_empty());
+        assert!(verifier_paths("cargo test -- --nocapture").is_empty());
+    }
+
+    #[test]
+    fn verification_changes_flags_tests_and_config() {
+        let files = vec![
+            FileChange {
+                path: "src/app.js".into(),
+                insertions: 4,
+                deletions: 0,
+            },
+            FileChange {
+                path: "verify.mjs".into(),
+                insertions: 2,
+                deletions: 2,
+            },
+            FileChange {
+                path: "tests/app.test.js".into(),
+                insertions: 10,
+                deletions: 0,
+            },
+            FileChange {
+                path: "package.json".into(),
+                insertions: 1,
+                deletions: 0,
+            },
+        ];
+
+        let changed = verification_changes(&files, "node verify.mjs");
+        assert_eq!(
+            changed,
+            vec![
+                "verify.mjs".to_string(),
+                "tests/app.test.js".to_string(),
+                "package.json".to_string()
+            ]
+        );
+        assert!(!changed.contains(&"src/app.js".to_string()));
     }
 }

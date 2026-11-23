@@ -29,7 +29,6 @@ Pendiente antes de llamarlo MVP cerrado:
 - instalación real de la PWA en un teléfono (requiere HTTPS/Tailscale) y Web
   Push;
 - dogfood de 10 tareas y métricas;
-- copia protegida del verificador (hoy el agente puede editar el test);
 - matriz Windows/macOS y empaquetado release/instalador.
 
 Claude Code queda implementado pero no probado end-to-end, fuera de prioridad
@@ -115,6 +114,8 @@ notificaciones, terminal interactiva) salva al producto.
 - [x] Stop real (mata el árbol de procesos).
 - [x] Review con diff stat, archivos, patch unificado y salida de verificación.
 - [x] Merge / Discard atómicos, con chequeo de repo limpio.
+- [x] Verificación protegida: verificador restaurado desde la rama base y merge
+  bloqueado si cambian tests/CI/config hasta que un humano lo acepte.
 - [x] PWA mobile-first instalable, estado en vivo, reconexión.
 - [x] PWA embebida en el binario; `ONI_PWA_DIR` permite servir desde disco.
 - [x] Persistencia de tareas en SQLite o JSON atómico (sobrevive reinicios).
@@ -258,7 +259,7 @@ público:** M5 + licencia + onboarding de 5 minutos.
 
 | Riesgo | Mitigación |
 |---|---|
-| El agente "pasa" tests pero rompe el diseño | Review humana obligatoria; mostrar diff, no solo verde. |
+| El agente "pasa" tests pero rompe el diseño | Review humana obligatoria; mostrar diff, no solo verde. Verificador restaurado desde la base y cambios sensibles bloquean el merge. |
 | Loop quema tokens sin avanzar | Detectar output idéntico / sin cambios en el worktree; cortar. |
 | Agentes interactivos piden permisos | Presets headless documentados; nunca prometer TUI interactiva en v0.1. |
 | Windows/macOS/Linux divergen | CI en Linux desde M3.5; matriz Windows/macOS y kill de proceso/paths desde M4. |

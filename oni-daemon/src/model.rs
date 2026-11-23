@@ -119,6 +119,14 @@ pub struct DiffPatch {
     pub truncated: bool,
 }
 
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase", default)]
+pub struct VerificationGuard {
+    pub tampered: bool,
+    pub files: Vec<String>,
+    pub accepted_by_human: bool,
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Task {
@@ -149,6 +157,8 @@ pub struct Task {
     pub last_error: Option<String>,
     #[serde(default)]
     pub diff: Option<DiffSummary>,
+    #[serde(default)]
+    pub verification: VerificationGuard,
 }
 
 #[derive(Clone, Debug, Deserialize)]

@@ -129,21 +129,20 @@ cuando la tarea quedó marcada con cambios sensibles en la verificación.
 
 ### TUI
 
-La TUI es un cliente aparte, hecho con **Ratatui**, para supervisar sin salir de
-la terminal:
+La TUI es la interfaz principal de terminal. Se abre con `oni` sin subcomando,
+o explícitamente con `oni tui`:
 
 ```bash
-cargo build --manifest-path oni-tui/Cargo.toml
-.\oni-tui\target\debug\oni-tui.exe
+cargo build --manifest-path oni-daemon/Cargo.toml
+.\oni-daemon\target\debug\oni.exe
 ```
-
-o `npm run tui`.
 
 Muestra la lista de tareas, el detalle, el log en vivo, el diff y permite
 merge, discard, stop, retry y aceptar cambios de verificación. Teclas: `?` para
-la ayuda completa.
+la ayuda completa. `oni tui --no-intro` saltea la animación.
 
-El intro usa **TerminalTextEffects** si `tte` está en el `PATH`:
+El intro y el cierre usan **TerminalTextEffects** con una hannya ASCII blanca y
+el wordmark ONI:
 
 ```bash
 uv tool install terminaltexteffects
@@ -152,6 +151,8 @@ uv tool install terminaltexteffects
 
 Sin TTE la TUI funciona igual. `--no-intro` o `ONI_TUI_INTRO=0` lo desactivan;
 `ONI_TTE_BIN` permite apuntar a otro binario.
+
+También existe el binario `oni-tui` si querés abrir la TUI sin pasar por el CLI.
 
 Guía completa de teclas y layout: [`docs/TUI.md`](docs/TUI.md).
 

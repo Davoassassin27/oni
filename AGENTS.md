@@ -28,7 +28,8 @@ npm run build
 cargo run --manifest-path oni-daemon/Cargo.toml --bin oni -- health
 cargo run --manifest-path oni-daemon/Cargo.toml --bin oni -- tasks
 
-# TUI (separate crate)
+# TUI (default when `oni` has no subcommand)
+cargo run --manifest-path oni-daemon/Cargo.toml --bin oni --
 cargo run --manifest-path oni-tui/Cargo.toml
 cargo test --manifest-path oni-tui/Cargo.toml
 

@@ -435,15 +435,28 @@ fn draw_status(frame: &mut Frame, app: &App, area: Rect) {
 }
 
 fn draw_help(frame: &mut Frame, area: Rect) {
-    let popup = centered_rect(76, 14, area);
+    let popup = centered_rect(100, 18, area);
     frame.render_widget(Clear, popup);
     let block = Block::default()
         .borders(Borders::ALL)
         .border_style(Style::default().fg(KINTSUGI))
         .title(Span::styled(
-            " ONI · keys ",
+            " ONI · hannya ",
             Style::default().fg(KINTSUGI).add_modifier(Modifier::BOLD),
         ));
+    let inner = block.inner(popup);
+    frame.render_widget(block, popup);
+
+    let columns = Layout::default()
+        .direction(Direction::Horizontal)
+        .constraints([Constraint::Length(34), Constraint::Min(40)])
+        .split(inner);
+
+    let hannya = Paragraph::new(crate::logo::HANNYA)
+        .style(Style::default().fg(HUESO))
+        .wrap(Wrap { trim: false });
+    frame.render_widget(hannya, columns[0]);
+
     let lines = vec![
         Line::from(Span::styled(
             "SUPERVISE",
@@ -464,10 +477,8 @@ fn draw_help(frame: &mut Frame, area: Rect) {
         Line::from("  v  patch      J / K, PgUp/PgDn  scroll log"),
         Line::from("  ?  close help      q  quit"),
     ];
-    let paragraph = Paragraph::new(lines)
-        .block(block)
-        .wrap(Wrap { trim: false });
-    frame.render_widget(paragraph, popup);
+    let paragraph = Paragraph::new(lines).wrap(Wrap { trim: false });
+    frame.render_widget(paragraph, columns[1]);
 }
 
 fn draw_confirm(frame: &mut Frame, app: &App, action: ConfirmAction) {

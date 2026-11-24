@@ -1,15 +1,31 @@
 # ONI TUI
 
-Cliente de terminal para supervisar tareas sin abrir la PWA. Está hecho con
+Interfaz de terminal para supervisar tareas sin abrir la PWA. Está hecha con
 **Ratatui** y habla con el daemon por la misma API REST.
 
 ```bash
-cargo build --manifest-path oni-tui/Cargo.toml
-.\oni-tui\target\debug\oni-tui.exe
+cargo build --manifest-path oni-daemon/Cargo.toml
+.\oni-daemon\target\debug\oni.exe
 ```
 
-`npm run tui` hace lo mismo. Acepta `--url`/`ONI_URL`, `--token`/`ONI_TOKEN`,
-`--interval` (segundos de refresh) y `--no-intro`.
+`oni` sin subcomando abre la TUI; `oni tui` hace lo mismo explícitamente. El
+binario suelto `oni-tui` sigue disponible. Acepta `--url`/`ONI_URL`,
+`--token`/`ONI_TOKEN`, `--interval` (segundos de refresh) y `--no-intro`.
+
+## Intro y cierre
+
+La TUI usa **TerminalTextEffects** para una entrada con la hannya ASCII blanca y
+el wordmark ONI, y un cierre corto al salir:
+
+```bash
+uv tool install terminaltexteffects
+# o: pipx install terminaltexteffects
+```
+
+- `--no-intro` o `ONI_TUI_INTRO=0` desactivan intro y cierre.
+- `ONI_TTE_BIN` apunta a un binario específico.
+- Si TTE no está instalado, la TUI arranca directo, sin error.
+- La hannya también aparece en la ayuda (`?`).
 
 ## Layout
 

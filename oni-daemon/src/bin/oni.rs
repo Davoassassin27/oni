@@ -26,16 +26,25 @@ struct Cli {
     #[arg(long, global = true, env = "ONI_TOKEN")]
     token: Option<String>,
 
-    /// Print raw JSON instead of tables
+    /// Print raw JSON instead of tables (ignored by the TUI)
     #[arg(long, global = true)]
     json: bool,
 
     #[command(subcommand)]
-    command: Command,
+    command: Option<Command>,
 }
 
 #[derive(Subcommand)]
 enum Command {
+    /// Open the interactive terminal UI (default when no command is given)
+    Tui {
+        /// Skip the TerminalTextEffects intro
+        #[arg(long)]
+        no_intro: bool,
+        /// Refresh interval in seconds
+        #[arg(long, default_value_t = 2)]
+        interval: u64,
+    },
     /// Check that the daemon is reachable
     Health,
     /// List registered projects
@@ -291,9 +300,30 @@ fn run(cli: Cli) -> Result<()> {
         json,
         command,
     } = cli;
+    let command = match command {
+        Some(Command::Tui { no_intro, interval }) => {
+            return oni_tui::run(oni_tui::Options {
+                url,
+                token,
+                interval,
+                no_intro,
+            });
+        }
+        Some(command) => command,
+        None => {
+            return oni_tui::run(oni_tui::Options {
+                url,
+                token,
+                interval: 2,
+                no_intro: false,
+            });
+        }
+    };
+
     let client = Client::new(url, token);
 
     match command {
+        Command::Tui { .. } => unreachable!("TUI is handled before the API client"),
         Command::Health => health(&client, json),
         Command::Projects => projects(&client, json),
         Command::Tasks { state } => tasks(&client, state.as_deref(), json),

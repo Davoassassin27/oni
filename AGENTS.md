@@ -123,6 +123,10 @@ stop the process first or run `oni-daemon\target\debug\oni-daemon.exe` directly.
   helpers imported by a verifier, so human review of the patch remains
   mandatory.
 - PWA install over LAN requires HTTPS (Tailscale Serve/TLS proxy).
+- Worktree isolation is Git-level only, not a filesystem sandbox. A controlled
+  probe wrote files outside the worktree with absolute paths and `..`, and Oni
+  did not see them in the diff. Use a container, WSL or VM with restricted
+  permissions for untrusted agents.
 - Juniperus: the contract, dataset pipeline, training, export and bench are
   implemented and tested, but the trained GGUF is not committed (weights are
   ignored). The deterministic fallback is the production path until a model is

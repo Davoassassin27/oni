@@ -265,6 +265,9 @@ queda en review.
   funciona como web app; para instalar, usá Tailscale Serve o un proxy TLS.
 - Los comandos de agente y de verificación son code execution. Conectá solo
   repos que controlás.
+- **El worktree aísla Git, no el filesystem.** Un agente corre con tus permisos
+  y puede escribir fuera del worktree con rutas absolutas o `..`. Para agentes
+  no confiables, usá un contenedor, WSL o una VM con permisos restringidos.
 - La verificación restaura desde la rama base el archivo del verificador
   referenciado por el acceptance command. Los cambios en tests, CI, lockfiles o
   configuración se muestran como sensibles y bloquean el merge hasta que un

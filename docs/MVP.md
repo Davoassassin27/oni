@@ -277,6 +277,7 @@ público:** M5 + licencia + onboarding de 5 minutos.
 | Windows/macOS/Linux divergen | CI en Linux desde M3.5; matriz Windows/macOS y kill de proceso/paths desde M4. |
 | El logo deriva de una referencia con licencia | Ver `docs/BRAND.md`: licenciar o redibujar antes de uso comercial. |
 | Exponer el daemon a internet | Bind localhost por defecto; token; guía Tailscale, no túnel propio. |
+| El agente escribe fuera del worktree | El worktree aísla Git, no el filesystem. Para agentes no confiables, correr en contenedor/WSL/VM con permisos restringidos; sandbox de paths pendiente. |
 
 ---
 

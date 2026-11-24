@@ -23,6 +23,8 @@ OpenCode real y un modelo gratuito:
 - PWA embebida en el binario: un solo ejecutable sirve API y app.
 - CLI `oni` como cliente de la API: health, projects, tasks, task, log, new,
   watch, patch, stop, retry, merge y discard.
+- TUI en Ratatui: lista, detalle, log en vivo, patch y acciones; intro opcional
+  con TerminalTextEffects.
 
 Pendiente antes de llamarlo MVP cerrado:
 

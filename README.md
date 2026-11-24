@@ -42,6 +42,8 @@ pulido, tests de integración y las piezas marcadas en
 - La PWA queda embebida en el binario: no hace falta `dist/` en runtime.
 - CLI `oni` para health, proyectos, tareas, dispatch, watch, log, patch, merge,
   stop y discard.
+- TUI en Ratatui con lista, detalle, log, patch y acciones; intro opcional con
+  TerminalTextEffects.
 
 ### Smoke test automatizado
 
@@ -124,6 +126,34 @@ cargo build --manifest-path oni-daemon/Cargo.toml
 Acepta `--url` o `ONI_URL`, `--token` o `ONI_TOKEN`, y `--json` para scripting.
 Los IDs de tarea se pueden abreviar a 8 caracteres. `accept` solo hace falta
 cuando la tarea quedó marcada con cambios sensibles en la verificación.
+
+### TUI
+
+La TUI es un cliente aparte, hecho con **Ratatui**, para supervisar sin salir de
+la terminal:
+
+```bash
+cargo build --manifest-path oni-tui/Cargo.toml
+.\oni-tui\target\debug\oni-tui.exe
+```
+
+o `npm run tui`.
+
+Muestra la lista de tareas, el detalle, el log en vivo, el diff y permite
+merge, discard, stop, retry y aceptar cambios de verificación. Teclas: `?` para
+la ayuda completa.
+
+El intro usa **TerminalTextEffects** si `tte` está en el `PATH`:
+
+```bash
+uv tool install terminaltexteffects
+# o: pipx install terminaltexteffects
+```
+
+Sin TTE la TUI funciona igual. `--no-intro` o `ONI_TUI_INTRO=0` lo desactivan;
+`ONI_TTE_BIN` permite apuntar a otro binario.
+
+Guía completa de teclas y layout: [`docs/TUI.md`](docs/TUI.md).
 
 ### Desarrollo
 

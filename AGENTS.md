@@ -28,6 +28,10 @@ npm run build
 cargo run --manifest-path oni-daemon/Cargo.toml --bin oni -- health
 cargo run --manifest-path oni-daemon/Cargo.toml --bin oni -- tasks
 
+# TUI (separate crate)
+cargo run --manifest-path oni-tui/Cargo.toml
+cargo test --manifest-path oni-tui/Cargo.toml
+
 # checks
 cargo check --manifest-path oni-daemon/Cargo.toml
 cargo test --manifest-path oni-daemon/Cargo.toml
@@ -48,6 +52,7 @@ stop the process first or run `oni-daemon\target\debug\oni-daemon.exe` directly.
 | `oni-daemon/src/api.rs` | REST routes, SSE, token middleware. |
 | `oni-daemon/src/pwa.rs` | Embedded PWA assets, disk override, SPA fallback. |
 | `oni-daemon/src/bin/oni.rs` | CLI client: projects, tasks, dispatch, watch, logs, patch, merge. |
+| `oni-tui/src/` | Ratatui terminal UI: task list, detail, live log, patch, actions. |
 | `oni-daemon/src/runner.rs` | Task state machine, agent spawn, log stream, verify + retry. |
 | `oni-daemon/src/git.rs` | Worktree, merge, commit, diff, slug/branch. |
 | `oni-daemon/src/store.rs` | JSON state persistence; interrupted-task recovery. |

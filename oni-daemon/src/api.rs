@@ -43,6 +43,8 @@ pub fn router(state: AppState) -> Router {
         .route("/tasks/{id}/merge", post(merge_task))
         .route("/tasks/{id}/discard", post(discard_task))
         .route("/tasks/{id}/accept-verification", post(accept_verification))
+        .route("/router/route", post(route_intent))
+        .route("/router/status", get(router_status))
         .route("/events", get(events))
         .with_state(state)
 }
@@ -255,6 +257,58 @@ async fn delete_project(
 
 async fn list_tasks(State(state): State<AppState>) -> Json<Vec<Task>> {
     Json(state.store.list_tasks().await)
+}
+
+#[derive(serde::Deserialize)]
+#[serde(rename_all = "camelCase")]
+struct RouteIntentRequest {
+    text: String,
+    #[serde(default)]
+    project_id: Option<Uuid>,
+    #[serde(default)]
+    task_id: Option<Uuid>,
+}
+
+async fn route_intent(
+    State(state): State<AppState>,
+    Json(body): Json<RouteIntentRequest>,
+) -> Result<Json<crate::router::RouteResponse>, AppError> {
+    let text = body.text.trim().to_string();
+    if text.is_empty() {
+        return Err(AppError::bad_request("router text cannot be empty"));
+    }
+    if text.chars().count() > 8_000 {
+        return Err(AppError::bad_request("router text is too long (max 8000)"));
+    }
+    if let Some(project_id) = body.project_id
+        && state.store.get_project(project_id).await.is_none()
+    {
+        return Err(AppError::not_found("project not found"));
+    }
+    if let Some(task_id) = body.task_id
+        && state.store.get_task(task_id).await.is_none()
+    {
+        return Err(AppError::not_found("task not found"));
+    }
+
+    Ok(Json(
+        crate::router::route(&state, text, body.project_id, body.task_id).await,
+    ))
+}
+
+async fn router_status(State(state): State<AppState>) -> Json<Value> {
+    let config = state.config.clone();
+    let fallback_config = config.clone();
+    let status = tokio::task::spawn_blocking(move || crate::router::probe_sidecar(&config))
+        .await
+        .unwrap_or_else(|error| {
+            json!({
+                "enabled": fallback_config.juniperus_url.is_some(),
+                "reachable": false,
+                "detail": format!("probe task failed: {error}"),
+            })
+        });
+    Json(status)
 }
 
 async fn create_task(

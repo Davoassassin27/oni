@@ -37,6 +37,15 @@ cargo test --manifest-path oni-tui/Cargo.toml
 cargo check --manifest-path oni-daemon/Cargo.toml
 cargo test --manifest-path oni-daemon/Cargo.toml
 npm run build --workspace @oni/pwa
+
+# Juniperus (subproyecto Python, cwd juniperus/)
+cd juniperus
+uv sync --extra dev
+uv run pytest
+uv run juniperus dataset --mode offline --count 1600
+uv run --extra train juniperus train --dry-run
+uv run juniperus eval --engine oracle
+uv run juniperus serve --backend mock --port 7767
 ```
 
 The PWA is embedded into the daemon at compile time, so run `npm run build`
@@ -56,8 +65,11 @@ stop the process first or run `oni-daemon\target\debug\oni-daemon.exe` directly.
 | `oni-tui/src/` | Ratatui terminal UI: task list, detail, live log, patch, actions. |
 | `oni-daemon/src/runner.rs` | Task state machine, agent spawn, log stream, verify + retry. |
 | `oni-daemon/src/git.rs` | Worktree, merge, commit, diff, slug/branch. |
+| `oni-daemon/src/router.rs` | Juniperus client, deterministic fallback, safety sanitization. |
 | `oni-daemon/src/store.rs` | JSON state persistence; interrupted-task recovery. |
 | `oni-daemon/src/state.rs` | Shared state, runner handles, process-tree kill. |
+| `juniperus/schema/intent_schema.py` | Router Contract v1 (source of truth). |
+| `juniperus/juniperus/` | Dataset, LoRA training, GGUF export, eval, sidecar. |
 | `clients/pwa/src/pages/` | Tasks, task detail, projects, settings. |
 | `clients/pwa/src/components/ui.tsx` | Brand primitives: buttons, pills, sheets, toasts. |
 | `clients/pwa/src/lib/api.ts` | Typed API client + token storage. |
@@ -84,6 +96,10 @@ stop the process first or run `oni-daemon\target\debug\oni-daemon.exe` directly.
    not claim commercial/trademark rights without licensing or a manual redraw.
 8. **Mobile-first:** touch targets ≥ 44 px, one-hand actions, no hover-only
    affordances.
+9. **Juniperus is preview-only.** `POST /api/router/route` returns a decision;
+   it must never create tasks, merge, or kill processes. The router and sidecar
+   must never emit `main_direct`; the daemon re-sanitizes every decision. If the
+   sidecar is down the deterministic fallback answers.
 
 ## Testing a change
 
@@ -107,3 +123,8 @@ stop the process first or run `oni-daemon\target\debug\oni-daemon.exe` directly.
   helpers imported by a verifier, so human review of the patch remains
   mandatory.
 - PWA install over LAN requires HTTPS (Tailscale Serve/TLS proxy).
+- Juniperus: the contract, dataset pipeline, training, export and bench are
+  implemented and tested, but the trained GGUF is not committed (weights are
+  ignored). The deterministic fallback is the production path until a model is
+  measured in shadow mode. Router decisions are preview-only; the PWA does not
+  apply them yet.

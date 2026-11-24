@@ -4,6 +4,9 @@ import type {
   NewProjectInput,
   NewTaskInput,
   Project,
+  RouterRouteInput,
+  RouterRouteResponse,
+  RouterStatus,
   ServerEvent,
   Task,
 } from "./types";
@@ -95,6 +98,12 @@ export const api = {
     request<Task>(`/tasks/${id}/accept-verification`, { method: "POST" }),
   discard: (id: string) =>
     request<Task>(`/tasks/${id}/discard`, { method: "POST" }),
+  routeIntent: (input: RouterRouteInput) =>
+    request<RouterRouteResponse>("/router/route", {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
+  routerStatus: () => request<RouterStatus>("/router/status"),
   eventsUrl: () => {
     const token = getToken();
     return `/api/events${token ? `?token=${encodeURIComponent(token)}` : ""}`;

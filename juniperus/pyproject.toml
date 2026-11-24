@@ -1,0 +1,51 @@
+[project]
+name = "juniperus"
+version = "0.1.0"
+description = "SLM router ultraliviano (<1B) para orquestación de agentes en Oni"
+readme = "README.md"
+requires-python = ">=3.11,<3.12"
+authors = [{ name = "Oni" }]
+dependencies = [
+    "pydantic>=2.7.0",
+    "openai>=1.20.0",
+    "python-dotenv>=1.0.1",
+]
+
+[project.optional-dependencies]
+# Dataset generation, training and GGUF merge/export.
+train = [
+    "torch>=2.2.0",
+    "transformers>=4.40.0",
+    "peft>=0.10.0",
+    "datasets>=2.18.0",
+]
+# Local GGUF inference and the `juniperus serve` sidecar.
+llm = ["llama-cpp-python>=0.2.70"]
+# Fast LoRA training on a CUDA GPU. The CPU path only needs the `train` extra.
+gpu = ["unsloth>=2024.4"]
+dev = [
+    "pytest>=8.1.0",
+    "ruff>=0.4.0",
+]
+
+[project.scripts]
+juniperus = "juniperus.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["schema", "juniperus"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+ignore = ["E501"]

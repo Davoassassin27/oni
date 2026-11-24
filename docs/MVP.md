@@ -25,6 +25,9 @@ OpenCode real y un modelo gratuito:
   watch, patch, stop, retry, merge y discard.
 - TUI en Ratatui: lista, detalle, log en vivo, patch y acciones; intro opcional
   con TerminalTextEffects.
+- Router Juniperus: contrato v1, dataset sintético, scripts de LoRA/GGUF,
+  bench, sidecar HTTP y endpoint de preview `POST /api/router/route` con
+  fallback determinístico. El GGUF entrenado no se distribuye en el repo.
 
 Pendiente antes de llamarlo MVP cerrado:
 
@@ -134,9 +137,12 @@ notificaciones, terminal interactiva) salva al producto.
 
 ### Won't (por ahora)
 
-- **Juniperus en el camino crítico del MVP.** El router SLM se desarrolla en
-  `feat/juniperus` y se integra después, con shadow mode y fallback. El MVP usa
-  el router determinístico y no depende de que el modelo esté listo.
+- **Juniperus en el camino crítico del MVP.** El router SLM vive en
+  `juniperus/` y se integra como preview opcional (`/api/router/route`) con
+  fallback determinístico. El MVP no depende de que el modelo esté entrenado:
+  si el sidecar falta o falla, el daemon responde con reglas. Aplicar la
+  decisión (crear tarea, mergear, stop) sigue siendo una acción humana y no
+  está implementado en el router.
 - **Orquestación multiagente / DAGs.** Una tarea, un agente, un worktree.
 - **Terminal interactiva como camino principal.** Los agentes corren en modo
   headless; los permisos se resuelven por preset. La PTY queda para debugging.
@@ -200,6 +206,7 @@ Invariantes:
 | Logs | Archivo por tarea + ring buffer en memoria | Reconnect sin pérdida; el archivo sirve para auditar. |
 | Auth | Token bearer + query token para SSE | Simple y suficiente para un usuario. |
 | CORS | Deshabilitado | La PWA es same-origin; evita que un sitio malicioso maneje el daemon local. |
+| Router local | Sidecar HTTP opcional + fallback determinístico en Rust | El SLM no entra al camino crítico ni al binario; se mide en shadow mode. |
 
 ### API v0.1
 
@@ -219,6 +226,8 @@ POST   /api/tasks/:id/stop
 POST   /api/tasks/:id/retry
 POST   /api/tasks/:id/merge
 POST   /api/tasks/:id/discard
+POST   /api/router/route      (preview; no ejecuta)
+GET    /api/router/status
 GET    /api/events            (SSE, todos los eventos)
 ```
 
@@ -250,7 +259,8 @@ GET    /api/events            (SSE, todos los eventos)
 | **M3 — Review/Merge** | Diff, merge, discard, limpieza | 3 merges limpios; `main` intacto. |
 | **M3.5 — CI** | Checks + smoke con agente fake en Linux | Los jobs pasan en GitHub Actions sin tokens. |
 | **M4 — Phone-ready** | PWA install, token, reconexión, LAN + HTTPS | Tarea lanzada y mergeada desde el teléfono con la PWA instalada (requiere HTTPS: Tailscale Serve o proxy TLS). |
-| **M5 — Dogfood** | 10 tareas reales, métricas, fixes | Hipótesis validada o pivot. |
+| **M5 – Dogfood** | 10 tareas reales, métricas, fixes | Hipótesis validada o pivot. |
+| **M6 – Router local (post-MVP)** | Juniperus: contrato, dataset, LoRA, GGUF, sidecar, fallback | Bench medido; shadow mode en la PWA; nunca auto-merge. |
 
 **Primer corte vendible:** M0–M3. **Primer corte usable:** M4. **Primer corte
 público:** M5 + licencia + onboarding de 5 minutos.

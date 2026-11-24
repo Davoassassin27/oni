@@ -446,6 +446,7 @@ pub fn slugify(input: &str, max_len: usize) -> String {
     let mut last_was_dash = false;
 
     for character in input.chars().flat_map(char::to_lowercase) {
+        let character = fold_latin(character);
         if character.is_ascii_alphanumeric() {
             slug.push(character);
             last_was_dash = false;
@@ -464,6 +465,22 @@ pub fn slugify(input: &str, max_len: usize) -> String {
     if slug.is_empty() { "task".into() } else { slug }
 }
 
+/// Fold common Latin accents so Spanish task titles produce readable branches
+/// (`arreglá` -> `arregla`) instead of dropping letters (`arregl`).
+fn fold_latin(character: char) -> char {
+    match character {
+        'á' | 'à' | 'ä' | 'â' | 'ã' | 'å' => 'a',
+        'é' | 'è' | 'ë' | 'ê' => 'e',
+        'í' | 'ì' | 'ï' | 'î' => 'i',
+        'ó' | 'ò' | 'ö' | 'ô' | 'õ' => 'o',
+        'ú' | 'ù' | 'ü' | 'û' => 'u',
+        'ñ' => 'n',
+        'ç' => 'c',
+        'ý' | 'ÿ' => 'y',
+        _ => character,
+    }
+}
+
 pub fn branch_name(title: &str, task_id: uuid::Uuid) -> String {
     let short = task_id.simple().to_string();
     let short = &short[..8];
@@ -479,6 +496,10 @@ mod tests {
         assert_eq!(
             slugify("Fix the flaky auth test!", 36),
             "fix-the-flaky-auth-test"
+        );
+        assert_eq!(
+            slugify("agregá una sección de precios", 60),
+            "agrega-una-seccion-de-precios"
         );
         assert_eq!(slugify("  ", 36), "task");
         assert_eq!(slugify("a/b\\c", 36), "a-b-c");

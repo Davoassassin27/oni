@@ -1,0 +1,28 @@
+{
+  "projects": [
+    {
+      "id": "aaaa1111-0000-0000-0000-000000000000",
+      "name": "landing",
+      "base_branch": "main",
+      "verify_command": "npm run build",
+      "agent": "opencode"
+    },
+    {
+      "id": "bbbb2222-0000-0000-0000-000000000000",
+      "name": "api",
+      "base_branch": "main",
+      "verify_command": "pytest -q",
+      "agent": "claude"
+    }
+  ],
+  "tasks": [
+    {
+      "id": "3f2a1b9c-0000-0000-0000-000000000000",
+      "title": "Add pricing section",
+      "state": "review",
+      "project": "landing",
+      "branch": "oni/add-pricing-3f2a1b9c"
+    }
+  ],
+  "selected_project_id": "aaaa1111-0000-0000-0000-000000000000"
+}

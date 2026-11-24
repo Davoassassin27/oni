@@ -1,0 +1,18 @@
+# Datos y modelos pesados (no van a Git)
+data/raw/*
+data/processed/*
+data/demo/*
+data/teacher-*/
+data/*.log
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+models/*
+!models/.gitkeep
+*.gguf
+*.bin
+*.safetensors
+
+# Reportes de evaluación y checkouts de llama.cpp
+reports/
+third_party/
+llama.cpp/

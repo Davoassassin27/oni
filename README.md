@@ -12,6 +12,9 @@ mano.
 - **Loop:** Act → Verify → retry acotado. Nada escribe en `main` hasta que vos
   lo apruebes.
 - **Interfaz:** React + Vite + Tailwind, mobile-first, instalable como PWA.
+- **Router:** Juniperus, un SLM local <1B opcional que convierte lenguaje
+  natural en intenciones validadas. Si no está, el router determinístico
+  responde igual. Ver [`juniperus/README.md`](juniperus/README.md).
 - **Marca:** Shiro Hannya, sumi / hueso / kintsugi / vermilion. Ver
   [`docs/BRAND.md`](docs/BRAND.md).
 
@@ -68,7 +71,8 @@ El script crea un repo temporal, registra el proyecto, lanza una tarea, espera
 Si falla, deja el repo y el log para inspeccionar.
 
 En GitHub Actions, `.github/workflows/ci.yml` corre formato, tests, build de la
-PWA y este smoke con agente fake en Linux; no consume tokens de modelo.
+PWA, este smoke con agente fake en Linux y los tests/dataset offline de
+Juniperus; no consume tokens de modelo.
 
 ### Dogfood
 
@@ -121,6 +125,7 @@ cargo build --manifest-path oni-daemon/Cargo.toml
 .\oni-daemon\target\debug\oni.exe merge <id>
 .\oni-daemon\target\debug\oni.exe stop <id>
 .\oni-daemon\target\debug\oni.exe discard <id>
+.\oni-daemon\target\debug\oni.exe route "mergeá la tarea <id>"
 ```
 
 Acepta `--url` o `ONI_URL`, `--token` o `ONI_TOKEN`, y `--json` para scripting.
@@ -155,6 +160,29 @@ Sin TTE la TUI funciona igual. `--no-intro` o `ONI_TUI_INTRO=0` lo desactivan;
 También existe el binario `oni-tui` si querés abrir la TUI sin pasar por el CLI.
 
 Guía completa de teclas y layout: [`docs/TUI.md`](docs/TUI.md).
+
+### Router opcional (Juniperus)
+
+Juniperus vive en [`juniperus/`](juniperus/README.md) como un sidecar local. El
+daemon lo usa si `ONI_JUNIPERUS_URL` está definido; si no, cae al router
+determinístico en Rust. La decisión es sólo un **preview**: no ejecuta nada.
+
+```powershell
+# sidecar sin modelo (reglas), para probar la integración
+cd juniperus
+uv run juniperus serve --backend mock --port 7767
+
+# en otra terminal
+$env:ONI_JUNIPERUS_URL="http://127.0.0.1:7767"
+.\oni-daemon\target\debug\oni-daemon.exe
+
+# preview de una decisión
+.\oni-daemon\target\debug\oni.exe route "mergeá la tarea 3f2a1b9c"
+```
+
+Pipeline del modelo (dataset, LoRA, GGUF, bench) en
+[`juniperus/docs/PIPELINE.md`](juniperus/docs/PIPELINE.md). Contrato en
+[`juniperus/docs/CONTRACT.md`](juniperus/docs/CONTRACT.md).
 
 ### Desarrollo
 
@@ -248,6 +276,9 @@ queda en review.
 | `ONI_VERIFY_TIMEOUT_SECS` | `600` | Timeout de la verificación. |
 | `ONI_OPENCODE_MODEL` | vacío | `provider/model` opcional para `opencode run --model`. |
 | `ONI_OPENCODE_BIN` | autodetectado | Ruta explícita al binario de OpenCode. |
+| `ONI_JUNIPERUS_URL` | vacío | Sidecar Juniperus; vacío usa el fallback determinístico. |
+| `ONI_JUNIPERUS_TOKEN` | vacío | Bearer token opcional para el sidecar. |
+| `ONI_JUNIPERUS_TIMEOUT_MS` | `1500` | Timeout del sidecar antes de caer al fallback. |
 | `ONI_LOG` | `oni_daemon=info,tower_http=info` | Filtro de `tracing`. |
 
 ## API
@@ -266,6 +297,8 @@ POST   /api/tasks/:id/retry
 POST   /api/tasks/:id/merge
 POST   /api/tasks/:id/accept-verification
 POST   /api/tasks/:id/discard
+POST   /api/router/route      (preview de Juniperus, no ejecuta)
+GET    /api/router/status
 GET    /api/events            (SSE)
 ```
 
@@ -277,8 +310,9 @@ El contrato completo y el alcance del MVP están en
 ```text
 oni/
 ├── docs/                 MVP + sistema de marca
-├── oni-daemon/           daemon Rust (Axum, git, runner)
+├── oni-daemon/           daemon Rust (Axum, git, runner, router fallback)
 ├── clients/pwa/          PWA React + Vite + Tailwind
+├── juniperus/            SLM router (contrato, dataset, LoRA, GGUF, sidecar)
 ├── images/               brand book y assets originales
 ├── package.json          workspace raíz
 └── README.md
@@ -302,8 +336,10 @@ oni/
 - **Después:** push notifications, múltiples verificaciones, PTY interactiva,
   edición/borrado de proyectos, SQLite, CI.
 
-No-MVP por decisión: router LLM local (Juniperus), multiagente/DAGs, edición de
-código desde el teléfono, cuentas/cloud y auto-merge.
+Juniperus ya vive en `juniperus/` como router local opcional en modo preview
+(con fallback determinístico y sin ejecutar acciones). Siguen fuera del MVP:
+multiagente/DAGs, edición de código desde el teléfono, cuentas/cloud y
+auto-merge. Ver [`juniperus/docs/ONI_INTEGRATION.md`](juniperus/docs/ONI_INTEGRATION.md).
 
 ## Licencia
 

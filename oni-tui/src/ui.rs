@@ -39,6 +39,8 @@ pub fn draw(frame: &mut Frame, app: &App) {
         Mode::Help => draw_help(frame, area),
         Mode::Confirm(action) => draw_confirm(frame, app, action),
         Mode::Patch => draw_patch(frame, app, area),
+        Mode::Command => draw_command(frame, app, area),
+        Mode::Route => draw_route(frame, app, area),
     }
 }
 
@@ -410,7 +412,7 @@ fn draw_status(frame: &mut Frame, app: &App, area: Rect) {
     } else {
         Line::from(vec![
             Span::styled(
-                " j/k move · Tab filter · p project · r refresh · v patch · ",
+                " j/k move · Tab filter · p project · : route · r refresh · v patch · ",
                 Style::default().fg(CENIZA),
             ),
             Span::styled("m", Style::default().fg(KINTSUGI)),
@@ -467,6 +469,7 @@ fn draw_help(frame: &mut Frame, area: Rect) {
         Line::from("  Tab, 1–5         filter tasks"),
         Line::from("  p                cycle project filter"),
         Line::from("  r                refresh now"),
+        Line::from("  : /              Juniperus route preview"),
         Line::from(""),
         Line::from(Span::styled(
             "ACT",
@@ -534,6 +537,190 @@ fn draw_confirm(frame: &mut Frame, app: &App, action: ConfirmAction) {
         .block(block)
         .wrap(Wrap { trim: false });
     frame.render_widget(paragraph, popup);
+}
+
+fn draw_command(frame: &mut Frame, app: &App, area: Rect) {
+    let popup = centered_rect(96, 5, area);
+    frame.render_widget(Clear, popup);
+    let block = Block::default()
+        .borders(Borders::ALL)
+        .border_style(Style::default().fg(KINTSUGI))
+        .title(Span::styled(
+            " Juniperus · route ",
+            Style::default().fg(KINTSUGI).add_modifier(Modifier::BOLD),
+        ));
+    let input = if app.route_input.is_empty() {
+        "type a natural-language command…".to_string()
+    } else {
+        app.route_input.clone()
+    };
+    let color = if app.route_input.is_empty() {
+        MUTED
+    } else {
+        HUESO
+    };
+    let lines = vec![
+        Line::from(vec![
+            Span::styled(
+                ": ",
+                Style::default().fg(KINTSUGI).add_modifier(Modifier::BOLD),
+            ),
+            Span::styled(input, Style::default().fg(color)),
+            Span::styled("▌", Style::default().fg(KINTSUGI)),
+        ]),
+        Line::from(Span::styled(
+            "Enter preview · Esc cancel · Ctrl+U clear",
+            Style::default().fg(MUTED),
+        )),
+    ];
+    frame.render_widget(Paragraph::new(lines).block(block), popup);
+}
+
+fn draw_route(frame: &mut Frame, app: &App, area: Rect) {
+    let popup = centered_rect(112, 24, area);
+    frame.render_widget(Clear, popup);
+    let block = Block::default()
+        .borders(Borders::ALL)
+        .border_style(Style::default().fg(KINTSUGI))
+        .title(Span::styled(
+            " Juniperus · preview ",
+            Style::default().fg(KINTSUGI).add_modifier(Modifier::BOLD),
+        ));
+
+    let Some(response) = app.route_preview.as_ref() else {
+        frame.render_widget(
+            Paragraph::new("No decision loaded.")
+                .style(Style::default().fg(MUTED))
+                .block(block),
+            popup,
+        );
+        return;
+    };
+
+    let decision = &response.decision;
+    let routing = &response.routing;
+    let source_color = if routing.degraded {
+        VERMILION
+    } else {
+        KINTSUGI
+    };
+    let source = format!(
+        "{} · {} · {} ms",
+        routing.source,
+        routing.backend.as_deref().unwrap_or("-"),
+        routing.latency_ms
+    );
+
+    let mut lines = vec![
+        kv_color("source", source, source_color),
+        kv_color("intent", decision.intent.clone(), KINTSUGI),
+        kv_color(
+            "project",
+            decision.project_ref.as_deref().unwrap_or("-").to_string(),
+            HUESO,
+        ),
+        kv_color("agent", decision.agent_target.clone(), HUESO),
+        kv_color(
+            "model",
+            decision
+                .model_override
+                .clone()
+                .unwrap_or_else(|| "auto".into()),
+            CENIZA,
+        ),
+        kv_color(
+            "worktree",
+            decision.worktree_strategy.clone(),
+            if decision.worktree_strategy == "main_direct" {
+                VERMILION
+            } else {
+                KINTSUGI
+            },
+        ),
+        kv_color(
+            "branch",
+            decision.branch_name.as_deref().unwrap_or("-").to_string(),
+            CENIZA,
+        ),
+        kv_color(
+            "loop",
+            format!("{} · max {}", decision.loop_status, decision.max_iterations),
+            HUESO,
+        ),
+        kv_color(
+            "criterion",
+            decision
+                .success_criterion
+                .as_deref()
+                .unwrap_or("-")
+                .to_string(),
+            CENIZA,
+        ),
+        kv_color(
+            "context",
+            format!(
+                "{} projects · {} tasks",
+                response.context.projects, response.context.tasks
+            ),
+            MUTED,
+        ),
+    ];
+
+    if let Some(error) = routing.error.as_deref() {
+        lines.push(Line::from(""));
+        lines.push(Line::from(Span::styled(
+            format!("fallback: {error}"),
+            Style::default().fg(VERMILION),
+        )));
+    }
+
+    lines.push(Line::from(""));
+    lines.push(Line::from(Span::styled(
+        "PEDIDO",
+        Style::default().fg(KINTSUGI).add_modifier(Modifier::BOLD),
+    )));
+    if let Some(prompt) = decision.task_prompt.as_deref() {
+        for line in prompt.lines() {
+            lines.push(Line::from(Span::styled(
+                line.to_string(),
+                Style::default().fg(HUESO),
+            )));
+        }
+    } else {
+        lines.push(Line::from(Span::styled("-", Style::default().fg(MUTED))));
+    }
+
+    lines.push(Line::from(""));
+    lines.push(Line::from(Span::styled(
+        "RAZÓN",
+        Style::default().fg(KINTSUGI).add_modifier(Modifier::BOLD),
+    )));
+    lines.push(Line::from(Span::styled(
+        decision.reasoning.clone(),
+        Style::default().fg(CENIZA),
+    )));
+    lines.push(Line::from(""));
+    lines.push(Line::from(vec![
+        Span::styled(
+            "preview only · nothing executed",
+            Style::default().fg(VERMILION).add_modifier(Modifier::BOLD),
+        ),
+        Span::styled("    Enter/Esc close", Style::default().fg(MUTED)),
+    ]));
+
+    frame.render_widget(
+        Paragraph::new(lines)
+            .block(block)
+            .wrap(Wrap { trim: false }),
+        popup,
+    );
+}
+
+fn kv_color(label: &str, value: String, color: Color) -> Line<'static> {
+    Line::from(vec![
+        Span::styled(format!("{label:<12}"), Style::default().fg(MUTED)),
+        Span::styled(value, Style::default().fg(color)),
+    ])
 }
 
 fn draw_patch(frame: &mut Frame, app: &App, area: Rect) {
@@ -700,5 +887,56 @@ mod tests {
         let text = render(&app);
         assert!(text.contains("Merge into the base branch?"));
         assert!(text.contains("confirm"));
+    }
+
+    #[test]
+    fn renders_the_command_palette() {
+        let mut app = App::fixture();
+        app.mode = Mode::Command;
+        app.route_input = "merge task 123".into();
+        let text = render(&app);
+        assert!(text.contains("Juniperus · route"));
+        assert!(text.contains("merge task 123"));
+    }
+
+    #[test]
+    fn renders_a_route_preview() {
+        use crate::api::{RouteContextSummary, RouteResponse, RouterDecision, RoutingMeta};
+
+        let mut app = App::fixture();
+        app.mode = Mode::Route;
+        app.route_preview = Some(RouteResponse {
+            decision: RouterDecision {
+                intent: "spawn_agent".into(),
+                agent_target: "opencode".into(),
+                model_override: None,
+                worktree_strategy: "isolated_branch".into(),
+                branch_name: Some("oni/add-faq".into()),
+                project_ref: Some("oni-demo-page".into()),
+                task_ref: None,
+                task_prompt: Some("Add an FAQ section".into()),
+                loop_status: "needs_human".into(),
+                max_iterations: 3,
+                success_criterion: Some("node verify.mjs".into()),
+                reasoning: "Preview only".into(),
+            },
+            routing: RoutingMeta {
+                source: "juniperus".into(),
+                latency_ms: 2,
+                degraded: false,
+                error: None,
+                backend: Some("mock".into()),
+                model: Some("rules-v1".into()),
+            },
+            context: RouteContextSummary {
+                projects: 1,
+                tasks: 1,
+            },
+        });
+        let text = render(&app);
+        assert!(text.contains("Juniperus · preview"));
+        assert!(text.contains("spawn_agent"));
+        assert!(text.contains("isolated_branch"));
+        assert!(text.contains("preview only"));
     }
 }

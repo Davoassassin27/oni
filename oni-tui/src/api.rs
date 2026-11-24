@@ -2,6 +2,7 @@ use std::time::Duration;
 
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
+use serde_json::{Value, json};
 
 #[derive(Clone)]
 pub struct Client {
@@ -42,6 +43,31 @@ impl Client {
                 .context("daemon returned invalid JSON"),
             Err(error) => Err(http_error(error)),
         }
+    }
+
+    fn send_json<T: DeserializeOwned>(&self, request: ureq::Request, body: Value) -> Result<T> {
+        match request.send_json(body) {
+            Ok(response) => response
+                .into_json::<T>()
+                .context("daemon returned invalid JSON"),
+            Err(error) => Err(http_error(error)),
+        }
+    }
+
+    pub fn route(
+        &self,
+        text: &str,
+        project_id: Option<&str>,
+        task_id: Option<&str>,
+    ) -> Result<RouteResponse> {
+        let mut body = json!({ "text": text });
+        if let Some(project_id) = project_id {
+            body["projectId"] = json!(project_id);
+        }
+        if let Some(task_id) = task_id {
+            body["taskId"] = json!(task_id);
+        }
+        self.send_json(self.request("POST", "/router/route"), body)
     }
 
     pub fn health(&self) -> Result<Health> {
@@ -254,4 +280,45 @@ pub struct PatchFile {
     pub patch: String,
     pub insertions: u64,
     pub deletions: u64,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RouteResponse {
+    pub decision: RouterDecision,
+    pub routing: RoutingMeta,
+    pub context: RouteContextSummary,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct RouterDecision {
+    pub intent: String,
+    pub agent_target: String,
+    pub model_override: Option<String>,
+    pub worktree_strategy: String,
+    pub branch_name: Option<String>,
+    pub project_ref: Option<String>,
+    pub task_ref: Option<String>,
+    pub task_prompt: Option<String>,
+    pub loop_status: String,
+    pub max_iterations: u32,
+    pub success_criterion: Option<String>,
+    pub reasoning: String,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct RoutingMeta {
+    pub source: String,
+    pub latency_ms: u64,
+    pub degraded: bool,
+    pub error: Option<String>,
+    pub backend: Option<String>,
+    pub model: Option<String>,
+}
+
+#[derive(Clone, Debug, Deserialize, Serialize)]
+pub struct RouteContextSummary {
+    pub projects: usize,
+    pub tasks: usize,
 }

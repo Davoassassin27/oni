@@ -2,7 +2,7 @@ use std::time::{Duration, Instant};
 
 use crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 
-use crate::api::{Client, Health, Patch, Project, Task};
+use crate::api::{Client, Health, Patch, Project, RouteResponse, Task};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Filter {
@@ -104,6 +104,8 @@ pub enum Mode {
     Help,
     Confirm(ConfirmAction),
     Patch,
+    Command,
+    Route,
 }
 
 pub struct App {
@@ -125,6 +127,8 @@ pub struct App {
     pub spinner: usize,
     pub last_refresh: Instant,
     pub quit: bool,
+    pub route_input: String,
+    pub route_preview: Option<RouteResponse>,
     detail_id: Option<String>,
 }
 
@@ -149,6 +153,8 @@ impl App {
             spinner: 0,
             last_refresh: Instant::now() - interval,
             quit: false,
+            route_input: String::new(),
+            route_preview: None,
             detail_id: None,
         }
     }
@@ -423,7 +429,60 @@ impl App {
                 KeyCode::Char('n') | KeyCode::Esc => self.mode = Mode::Normal,
                 _ => {}
             },
+            Mode::Command => self.handle_command_key(key),
+            Mode::Route => match key.code {
+                KeyCode::Esc | KeyCode::Char('q') | KeyCode::Enter => {
+                    self.mode = Mode::Normal;
+                }
+                _ => {}
+            },
             Mode::Normal => self.handle_normal_key(key),
+        }
+    }
+
+    fn handle_command_key(&mut self, key: KeyEvent) {
+        match key.code {
+            KeyCode::Esc => self.mode = Mode::Normal,
+            KeyCode::Enter => self.submit_route(),
+            KeyCode::Backspace => {
+                self.route_input.pop();
+            }
+            KeyCode::Char('u') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                self.route_input.clear();
+            }
+            KeyCode::Char(character)
+                if !key.modifiers.contains(KeyModifiers::CONTROL)
+                    && !key.modifiers.contains(KeyModifiers::ALT) =>
+            {
+                if self.route_input.chars().count() < 2000 {
+                    self.route_input.push(character);
+                }
+            }
+            _ => {}
+        }
+    }
+
+    fn submit_route(&mut self) {
+        let text = self.route_input.trim().to_string();
+        if text.is_empty() {
+            self.set_status("route text cannot be empty", Tone::Error);
+            return;
+        }
+
+        let project_id = self.detail.as_ref().map(|task| task.project_id.clone());
+        let task_id = self.detail.as_ref().map(|task| task.id.clone());
+        match self
+            .client
+            .route(&text, project_id.as_deref(), task_id.as_deref())
+        {
+            Ok(preview) => {
+                self.route_preview = Some(preview);
+                self.mode = Mode::Route;
+            }
+            Err(error) => {
+                self.set_status(error.to_string(), Tone::Error);
+                self.mode = Mode::Normal;
+            }
         }
     }
 
@@ -431,6 +490,11 @@ impl App {
         match key.code {
             KeyCode::Char('q') => self.quit = true,
             KeyCode::Char('?') => self.mode = Mode::Help,
+            KeyCode::Char(':') | KeyCode::Char('/') => {
+                self.mode = Mode::Command;
+                self.route_input.clear();
+                self.route_preview = None;
+            }
             KeyCode::Char('j') | KeyCode::Down => self.select_next(),
             KeyCode::Char('k') | KeyCode::Up => self.select_previous(),
             KeyCode::Char('g') | KeyCode::Home => self.select_first(),

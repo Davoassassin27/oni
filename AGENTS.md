@@ -126,7 +126,7 @@ stop the process first or run `oni-daemon\target\debug\oni-daemon.exe` directly.
 - Worktree isolation is Git-level only, not a filesystem sandbox. A controlled
   probe wrote files outside the worktree with absolute paths and `..`, and Oni
   did not see them in the diff. Use a container, WSL or VM with restricted
-  permissions for untrusted agents.
+  permissions for untrusted agents. Design: `docs/SANDBOX.md`.
 - Juniperus: the contract, dataset pipeline, training, export and bench are
   implemented and tested, but the trained GGUF is not committed (weights are
   ignored). The deterministic fallback is the production path until a model is

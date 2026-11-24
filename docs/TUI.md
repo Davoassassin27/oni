@@ -19,6 +19,20 @@ oni
 binario suelto `oni-tui` sigue disponible. Acepta `--url`/`ONI_URL`,
 `--token`/`ONI_TOKEN`, `--interval` (segundos de refresh) y `--no-intro`.
 
+## Juniperus
+
+`:` o `/` abren el command palette. Escribí un pedido en lenguaje natural y
+presioná Enter:
+
+```text
+:mergeá la tarea 0340ad2d
+```
+
+La TUI consulta `POST /api/router/route` y muestra la decisión completa:
+source/backend/model, intent, proyecto, agente, modelo, worktree strategy,
+branch, loop, criterio de éxito, prompt y razonamiento. Es **preview only**:
+no crea tareas, no mergea y no ejecuta nada.
+
 ## Intro y cierre
 
 La TUI usa **TerminalTextEffects** para una entrada con la hannya ASCII blanca y
@@ -60,6 +74,7 @@ j/k move · Tab filter · p project · r refresh · v patch · m merge ...
 | `g` / `G`, Home/End | Primera / última tarea. |
 | `Tab`, `1`–`5` | Filtrar: ALL, ACTIVE, REVIEW, DONE, FAILED. |
 | `p` | Ciclar filtro de proyecto. |
+| `:` o `/` | Command palette de Juniperus; muestra la decisión en preview. |
 | `r` | Refrescar ahora. |
 | `v` | Ver el patch unificado de la tarea. |
 | `J` / `K`, PgUp/PgDn | Scrollear el log. |

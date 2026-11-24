@@ -151,7 +151,8 @@ oni
 
 Muestra la lista de tareas, el detalle, el log en vivo, el diff y permite
 merge, discard, stop, retry y aceptar cambios de verificación. Teclas: `?` para
-la ayuda completa. `oni tui --no-intro` saltea la animación.
+la ayuda completa. `oni tui --no-intro` saltea la animación. `:` o `/` abre el
+command palette de Juniperus y muestra la decisión en modo preview.
 
 El intro y el cierre usan **TerminalTextEffects** con una hannya ASCII blanca y
 el wordmark ONI:
@@ -268,6 +269,7 @@ queda en review.
 - **El worktree aísla Git, no el filesystem.** Un agente corre con tus permisos
   y puede escribir fuera del worktree con rutas absolutas o `..`. Para agentes
   no confiables, usá un contenedor, WSL o una VM con permisos restringidos.
+  Diseño recomendado en [`docs/SANDBOX.md`](docs/SANDBOX.md).
 - La verificación restaura desde la rama base el archivo del verificador
   referenciado por el acceptance command. Los cambios en tests, CI, lockfiles o
   configuración se muestran como sensibles y bloquean el merge hasta que un

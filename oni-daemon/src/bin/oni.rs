@@ -95,6 +95,18 @@ enum Command {
     Accept { id: String },
     /// Discard the task and remove its worktree
     Discard { id: String },
+    /// Preview how Juniperus routes a natural-language command (does not execute it)
+    Route {
+        /// Project id or exact name used as context
+        #[arg(long)]
+        project: Option<String>,
+        /// Task id or id prefix used as context
+        #[arg(long)]
+        task: Option<String>,
+        /// Natural-language command
+        #[arg(required = true, num_args = 1.., trailing_var_arg = true)]
+        text: Vec<String>,
+    },
     /// Print the unified patch, or just its stats
     Patch {
         id: String,
@@ -326,6 +338,17 @@ fn run(cli: Cli) -> Result<()> {
         Command::Merge { id } => merge(&client, &id, json),
         Command::Accept { id } => accept_verification(&client, &id, json),
         Command::Discard { id } => discard(&client, &id),
+        Command::Route {
+            project,
+            task,
+            text,
+        } => router_route(
+            &client,
+            project.as_deref(),
+            task.as_deref(),
+            &text.join(" "),
+            json,
+        ),
         Command::Patch { id, stat } => patch(&client, &id, stat, json),
     }
 }
@@ -733,6 +756,99 @@ fn patch(client: &Client, id: &str, stat_only: bool, json_output: bool) -> Resul
         }
     }
     Ok(())
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+struct RouterRouteResponse {
+    decision: Value,
+    routing: Value,
+    context: Value,
+}
+
+fn router_route(
+    client: &Client,
+    project: Option<&str>,
+    task: Option<&str>,
+    text: &str,
+    json_output: bool,
+) -> Result<()> {
+    if text.trim().is_empty() {
+        bail!("router text cannot be empty");
+    }
+    let project_id = match project {
+        Some(needle) => Some(find_project(client, needle)?.id),
+        None => None,
+    };
+    let task_id = match task {
+        Some(needle) => Some(resolve_task(client, needle)?),
+        None => None,
+    };
+
+    let mut body = json!({ "text": text });
+    if let Some(id) = project_id {
+        body["projectId"] = json!(id);
+    }
+    if let Some(id) = task_id {
+        body["taskId"] = json!(id);
+    }
+
+    let response: RouterRouteResponse = client.post("/router/route", body)?;
+    if json_output {
+        return print_json(&response);
+    }
+
+    let decision = &response.decision;
+    let routing = &response.routing;
+    println!(
+        "intent      {}",
+        value_str(decision.get("intent")).unwrap_or("-")
+    );
+    println!(
+        "source      {}{}",
+        value_str(routing.get("source")).unwrap_or("-"),
+        if routing.get("degraded").and_then(Value::as_bool) == Some(true) {
+            " (degraded)"
+        } else {
+            ""
+        }
+    );
+    if let Some(project) = value_str(decision.get("project_ref")) {
+        println!("project     {project}");
+    }
+    if let Some(task) = value_str(decision.get("task_ref")) {
+        println!("task        {task}");
+    }
+    if let Some(agent) = value_str(decision.get("agent_target")) {
+        println!("agent       {agent}");
+    }
+    if let Some(prompt) = value_str(decision.get("task_prompt")) {
+        println!("prompt      {}", truncate(prompt, 140));
+    }
+    if let Some(criterion) = value_str(decision.get("success_criterion")) {
+        println!("verify      {}", truncate(criterion, 140));
+    }
+    println!(
+        "loop        {} (max {} iterations)",
+        value_str(decision.get("loop_status")).unwrap_or("-"),
+        decision
+            .get("max_iterations")
+            .and_then(Value::as_u64)
+            .unwrap_or(0)
+    );
+    if let Some(reasoning) = value_str(decision.get("reasoning")) {
+        println!("reasoning   {reasoning}");
+    }
+    if let Some(error) = value_str(routing.get("error")) {
+        println!("error       {error}");
+    }
+    println!("preview only; nothing was executed");
+    Ok(())
+}
+
+fn value_str(value: Option<&Value>) -> Option<&str> {
+    value
+        .and_then(Value::as_str)
+        .filter(|value| !value.is_empty())
 }
 
 fn find_project(client: &Client, needle: &str) -> Result<Project> {

@@ -4,6 +4,7 @@ mod error;
 mod git;
 mod model;
 mod pwa;
+mod router;
 mod runner;
 mod state;
 mod store;
@@ -106,6 +107,15 @@ async fn main() -> Result<()> {
         } else {
             "disabled (localhost only)"
         }
+    );
+    tracing::info!(
+        "  router: {}",
+        state
+            .config
+            .juniperus_url
+            .as_deref()
+            .map(|url| format!("juniperus at {url} (fallback enabled)"))
+            .unwrap_or_else(|| "deterministic fallback".to_string())
     );
 
     axum::serve(listener, app)

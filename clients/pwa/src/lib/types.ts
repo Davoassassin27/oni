@@ -108,6 +108,59 @@ export interface NewTaskInput {
   maxIterations?: number;
 }
 
+export type RouterIntent =
+  | "spawn_agent"
+  | "query_status"
+  | "merge_worktree"
+  | "retry_task"
+  | "cancel_task"
+  | "discard_task"
+  | "list_projects"
+  | "help"
+  | "unknown";
+
+export interface RouterDecision {
+  intent: RouterIntent;
+  agent_target: "opencode" | "claude" | "custom" | "auto";
+  model_override: string | null;
+  worktree_strategy: "isolated_branch" | "existing_branch";
+  branch_name: string | null;
+  project_ref: string | null;
+  task_ref: string | null;
+  task_prompt: string | null;
+  loop_status: "single_shot" | "continue_loop" | "completed" | "needs_human";
+  max_iterations: number;
+  success_criterion: string | null;
+  reasoning: string;
+}
+
+export interface RouterRouteInput {
+  text: string;
+  projectId?: string | null;
+  taskId?: string | null;
+}
+
+export interface RouterRouteResponse {
+  decision: RouterDecision;
+  routing: {
+    source: "juniperus" | "fallback";
+    latencyMs: number;
+    degraded: boolean;
+    error: string | null;
+    backend?: string | null;
+    model?: string | null;
+  };
+  context: { projects: number; tasks: number };
+}
+
+export interface RouterStatus {
+  enabled: boolean;
+  url: string | null;
+  reachable: boolean;
+  detail?: string;
+  sidecar?: Record<string, unknown>;
+}
+
 export type ServerEvent =
   | { type: "task"; task: Task }
   | { type: "log"; taskId: string; chunk: string }

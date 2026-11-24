@@ -13,6 +13,10 @@ pub struct Config {
     pub pwa_dir: Option<PathBuf>,
     pub agent_timeout_secs: u64,
     pub verify_timeout_secs: u64,
+    /// Optional local Juniperus sidecar. Empty means deterministic fallback.
+    pub juniperus_url: Option<String>,
+    pub juniperus_token: Option<String>,
+    pub juniperus_timeout_ms: u64,
 }
 
 impl Config {
@@ -54,6 +58,19 @@ impl Config {
             .and_then(|value| value.parse().ok())
             .unwrap_or(10 * 60);
 
+        let juniperus_url = std::env::var("ONI_JUNIPERUS_URL")
+            .ok()
+            .map(|value| value.trim().trim_end_matches('/').to_string())
+            .filter(|value| !value.is_empty());
+        let juniperus_token = std::env::var("ONI_JUNIPERUS_TOKEN")
+            .ok()
+            .map(|value| value.trim().to_string())
+            .filter(|value| !value.is_empty());
+        let juniperus_timeout_ms = std::env::var("ONI_JUNIPERUS_TIMEOUT_MS")
+            .ok()
+            .and_then(|value| value.parse().ok())
+            .unwrap_or(1_500);
+
         Ok(Self {
             host,
             port,
@@ -64,6 +81,9 @@ impl Config {
             pwa_dir,
             agent_timeout_secs,
             verify_timeout_secs,
+            juniperus_url,
+            juniperus_token,
+            juniperus_timeout_ms,
         })
     }
 }

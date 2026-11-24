@@ -160,6 +160,15 @@ The deterministic fallback answers when the sidecar is missing or fails
 The contract, dataset, LoRA/GGUF pipeline, sidecar, and bench live in
 [`juniperus/`](juniperus/). The trained GGUF is not distributed here.
 
+Published artifacts:
+
+- Model card and reference router:
+  [Davoassassin27/juniperus-router](https://huggingface.co/Davoassassin27/juniperus-router)
+- Dataset (1,905 examples):
+  [Davoassassin27/juniperus-router-dataset](https://huggingface.co/datasets/Davoassassin27/juniperus-router-dataset)
+- Collection:
+  [Juniperus Router](https://huggingface.co/collections/Davoassassin27/juniperus-router-6b061e505554c506ffb52e2c)
+
 ## Safety and data handling
 
 - The daemon binds to `127.0.0.1` by default. LAN mode requires

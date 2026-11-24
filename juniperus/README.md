@@ -33,6 +33,18 @@ PWA / CLI â”€â”€â–º GET/POST /api/router/* â”€â”€â–º
 El dataset y los pesos estÃ¡n en `.gitignore`. El repo guarda el contrato, los
 scripts y los tests; el modelo se reproduce con tres comandos.
 
+## Artefactos publicados
+
+- Model card + backend de reglas:
+  https://huggingface.co/Davoassassin27/juniperus-router
+- Dataset (1.905 ejemplos):
+  https://huggingface.co/datasets/Davoassassin27/juniperus-router-dataset
+- Coleccion:
+  https://huggingface.co/collections/Davoassassin27/juniperus-router-6b061e505554c506ffb52e2c
+
+El repo de Hugging Face contiene el contrato, el backend de reglas y los
+reportes; el GGUF entrenado se publicara en el mismo modelo cuando exista.
+
 ## Quickstart sin GPU
 
 ```bash

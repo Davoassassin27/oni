@@ -8,6 +8,13 @@ cargo build --manifest-path oni-daemon/Cargo.toml
 .\oni-daemon\target\debug\oni.exe
 ```
 
+Para instalarlo como comando global:
+
+```bash
+cargo install --path oni-daemon --bin oni --locked
+oni
+```
+
 `oni` sin subcomando abre la TUI; `oni tui` hace lo mismo explícitamente. El
 binario suelto `oni-tui` sigue disponible. Acepta `--url`/`ONI_URL`,
 `--token`/`ONI_TOKEN`, `--interval` (segundos de refresh) y `--no-intro`.

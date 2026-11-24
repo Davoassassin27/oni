@@ -142,6 +142,13 @@ cargo build --manifest-path oni-daemon/Cargo.toml
 .\oni-daemon\target\debug\oni.exe
 ```
 
+Para tener el comando en el PATH:
+
+```bash
+cargo install --path oni-daemon --bin oni --locked
+oni
+```
+
 Muestra la lista de tareas, el detalle, el log en vivo, el diff y permite
 merge, discard, stop, retry y aceptar cambios de verificación. Teclas: `?` para
 la ayuda completa. `oni tui --no-intro` saltea la animación.

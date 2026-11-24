@@ -24,6 +24,9 @@ npm run dev
 # production build
 npm run build
 
+# landing page (static)
+npm run site
+
 # CLI (same build, talks to the daemon over HTTP)
 cargo run --manifest-path oni-daemon/Cargo.toml --bin oni -- health
 cargo run --manifest-path oni-daemon/Cargo.toml --bin oni -- tasks
@@ -63,6 +66,7 @@ stop the process first or run `oni-daemon\target\debug\oni-daemon.exe` directly.
 | `oni-daemon/src/pwa.rs` | Embedded PWA assets, disk override, SPA fallback. |
 | `oni-daemon/src/bin/oni.rs` | CLI client: projects, tasks, dispatch, watch, logs, patch, merge. |
 | `oni-tui/src/` | Ratatui terminal UI: task list, detail, live log, patch, actions. |
+| `site/` | Static open-source landing page, deployed with GitHub Pages. |
 | `oni-daemon/src/runner.rs` | Task state machine, agent spawn, log stream, verify + retry. |
 | `oni-daemon/src/git.rs` | Worktree, merge, commit, diff, slug/branch. |
 | `oni-daemon/src/router.rs` | Juniperus client, deterministic fallback, safety sanitization. |

@@ -106,6 +106,8 @@ pub enum Mode {
     Patch,
     Command,
     Route,
+    Search,
+    Projects,
 }
 
 pub struct App {
@@ -116,6 +118,9 @@ pub struct App {
     pub tasks: Vec<Task>,
     pub filter: Filter,
     pub project_filter: Option<String>,
+    pub search: String,
+    pub search_input: String,
+    pub project_selection: usize,
     pub selected: usize,
     pub detail: Option<Task>,
     pub log: Vec<String>,
@@ -142,6 +147,9 @@ impl App {
             tasks: Vec::new(),
             filter: Filter::All,
             project_filter: None,
+            search: String::new(),
+            search_input: String::new(),
+            project_selection: 0,
             selected: 0,
             detail: None,
             log: Vec::new(),
@@ -204,6 +212,7 @@ impl App {
     }
 
     pub fn visible_tasks(&self) -> Vec<&Task> {
+        let query = self.search.trim().to_ascii_lowercase();
         self.tasks
             .iter()
             .filter(|task| self.filter.matches(task))
@@ -211,6 +220,12 @@ impl App {
                 self.project_filter
                     .as_ref()
                     .is_none_or(|project| &task.project_name == project)
+            })
+            .filter(|task| {
+                query.is_empty()
+                    || task.title.to_ascii_lowercase().contains(&query)
+                    || task.project_name.to_ascii_lowercase().contains(&query)
+                    || task.branch.to_ascii_lowercase().contains(&query)
             })
             .collect()
     }
@@ -231,6 +246,7 @@ impl App {
     }
 
     pub fn filter_count(&self, filter: Filter) -> usize {
+        let query = self.search.trim().to_ascii_lowercase();
         self.tasks
             .iter()
             .filter(|task| filter.matches(task))
@@ -238,6 +254,12 @@ impl App {
                 self.project_filter
                     .as_ref()
                     .is_none_or(|project| &task.project_name == project)
+            })
+            .filter(|task| {
+                query.is_empty()
+                    || task.title.to_ascii_lowercase().contains(&query)
+                    || task.project_name.to_ascii_lowercase().contains(&query)
+                    || task.branch.to_ascii_lowercase().contains(&query)
             })
             .count()
     }
@@ -350,6 +372,83 @@ impl App {
         self.refresh_detail();
     }
 
+    pub fn project_names(&self) -> Vec<String> {
+        let mut names: Vec<String> = self
+            .tasks
+            .iter()
+            .map(|task| task.project_name.clone())
+            .collect();
+        names.sort();
+        names.dedup();
+        names
+    }
+
+    pub fn open_projects(&mut self) {
+        let names = self.project_names();
+        self.project_selection = self
+            .project_filter
+            .as_ref()
+            .and_then(|project| names.iter().position(|name| name == project))
+            .map(|index| index + 1)
+            .unwrap_or(0);
+        self.mode = Mode::Projects;
+    }
+
+    pub fn move_project_selection(&mut self, delta: i32) {
+        let max = self.project_names().len() as i32;
+        self.project_selection = (self.project_selection as i32 + delta).clamp(0, max) as usize;
+    }
+
+    pub fn apply_project_selection(&mut self) {
+        let names = self.project_names();
+        self.project_filter = if self.project_selection == 0 {
+            None
+        } else {
+            names.get(self.project_selection - 1).cloned()
+        };
+        self.mode = Mode::Normal;
+        self.selected = 0;
+        self.refresh_detail();
+    }
+
+    pub fn open_search(&mut self) {
+        self.search_input = self.search.clone();
+        self.mode = Mode::Search;
+    }
+
+    fn handle_search_key(&mut self, key: KeyEvent) {
+        match key.code {
+            KeyCode::Esc => {
+                self.search.clear();
+                self.search_input.clear();
+                self.mode = Mode::Normal;
+                self.selected = 0;
+                self.refresh_detail();
+            }
+            KeyCode::Enter => {
+                self.search = self.search_input.trim().to_string();
+                self.mode = Mode::Normal;
+                self.selected = 0;
+                self.refresh_detail();
+            }
+            KeyCode::Backspace => {
+                self.search_input.pop();
+            }
+            KeyCode::Char('u') if key.modifiers.contains(KeyModifiers::CONTROL) => {
+                self.search_input.clear();
+            }
+            KeyCode::Char(character)
+                if !key.modifiers.contains(KeyModifiers::CONTROL)
+                    && !key.modifiers.contains(KeyModifiers::ALT) =>
+            {
+                if self.search_input.chars().count() < 160 {
+                    self.search_input.push(character);
+                }
+            }
+            _ => {}
+        }
+    }
+
     pub fn scroll_log(&mut self, delta: i32) {
         let max = self.log.len().saturating_sub(1).min(u16::MAX as usize) as i32;
         self.log_scroll = (self.log_scroll as i32 + delta).clamp(0, max) as u16;
@@ -436,6 +535,16 @@ impl App {
                 }
                 _ => {}
             },
+            Mode::Search => self.handle_search_key(key),
+            Mode::Projects => match key.code {
+                KeyCode::Esc | KeyCode::Char('q') | KeyCode::Char('p') => {
+                    self.mode = Mode::Normal;
+                }
+                KeyCode::Down | KeyCode::Char('j') => self.move_project_selection(1),
+                KeyCode::Up | KeyCode::Char('k') => self.move_project_selection(-1),
+                KeyCode::Enter => self.apply_project_selection(),
+                _ => {}
+            },
             Mode::Normal => self.handle_normal_key(key),
         }
     }
@@ -505,7 +614,8 @@ impl App {
             KeyCode::Char('3') => self.set_filter(Filter::Review),
             KeyCode::Char('4') => self.set_filter(Filter::Done),
             KeyCode::Char('5') => self.set_filter(Filter::Failed),
-            KeyCode::Char('p') => self.cycle_project(),
+            KeyCode::Char('p') => self.open_projects(),
+            KeyCode::Char('f') => self.open_search(),
             KeyCode::Char('r') => {
                 self.set_status("refreshing", Tone::Info);
                 self.refresh();
@@ -666,5 +776,28 @@ impl App {
             "merge requires explicit acceptance".into(),
         ];
         app
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn search_filters_visible_tasks() {
+        let mut app = App::fixture();
+        app.search = "guard".into();
+        assert_eq!(app.visible_tasks().len(), 1);
+        app.search = "not-a-task".into();
+        assert!(app.visible_tasks().is_empty());
+    }
+
+    #[test]
+    fn project_picker_applies_the_selected_project() {
+        let mut app = App::fixture();
+        app.project_selection = 1;
+        app.apply_project_selection();
+        assert_eq!(app.project_filter.as_deref(), Some("oni-demo-page"));
+        assert_eq!(app.mode, Mode::Normal);
     }
 }

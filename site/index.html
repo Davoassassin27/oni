@@ -1,0 +1,346 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Oni is a free, open-source agentic development environment. Coding agents run in isolated worktrees, every attempt is verified, and a human merges."
+    />
+    <title>Oni — open-source agentic development environment</title>
+    <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+    <link rel="stylesheet" href="styles.css" />
+    <noscript><style>.reveal { opacity: 1; transform: none; }</style></noscript>
+    <script src="app.js" defer></script>
+  </head>
+  <body>
+    <a class="skip" href="#main">Skip to content</a>
+
+    <header class="site-header">
+      <a class="brand" href="#" aria-label="Oni home">
+        <span class="brand-mark" aria-hidden="true"></span>
+        <span class="brand-name">ONI</span>
+      </a>
+
+      <nav class="nav" aria-label="Primary">
+        <a href="#philosophy">Philosophy</a>
+        <a href="#system">System</a>
+        <a href="#interfaces">Interfaces</a>
+        <a href="#docs">Docs</a>
+      </nav>
+
+      <div class="header-actions">
+        <button class="theme-toggle" id="theme-toggle" type="button" aria-label="Switch to light mode" aria-pressed="false">
+          <span class="theme-toggle-glyph" aria-hidden="true">☾</span>
+        </button>
+        <button class="icon-button" id="nav-toggle" type="button" aria-label="Toggle navigation" aria-expanded="false">
+          <span></span><span></span>
+        </button>
+        <a class="button button-small" href="https://github.com/Davoassassin27/oni">GitHub</a>
+      </div>
+    </header>
+
+    <main id="main">
+      <section class="hero" data-section="hero">
+        <div class="hero-copy reveal">
+          <p class="eyebrow">Open source · local-first · MIT</p>
+          <h1>Ship intent.<br /><span>Not keystrokes.</span></h1>
+          <p class="lede">
+            Oni is a free, open-source agentic development environment. It runs
+            coding agents in disposable worktrees, verifies every attempt, and
+            waits for a human before merging. No accounts. No seats. No cloud
+            control plane.
+          </p>
+          <div class="hero-actions">
+            <a class="button" href="#install">Install Oni</a>
+            <a class="button button-ghost" href="#docs">Read the docs</a>
+          </div>
+          <dl class="stats">
+            <div><dt>License</dt><dd>MIT, forever</dd></div>
+            <div><dt>Runtime</dt><dd>your machine</dd></div>
+            <div><dt>Merge</dt><dd>always human</dd></div>
+          </dl>
+        </div>
+
+        <div class="hero-panel reveal" aria-label="Example Oni session">
+          <div class="panel-bar">
+            <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+            <span class="panel-title">oni / terminal</span>
+          </div>
+          <pre class="terminal"><code><span class="t-dim">$</span> oni
+<span class="t-gold">◆ ONI</span>  <span class="t-dim">v0.1.0</span>  <span class="t-ok">●</span> daemon
+project oni-demo-page   filter REVIEW
+<span class="t-dim">────────────────────────────────────</span>
+<span class="t-gold">▌</span> 3f2a1b9c REVIEW 1/3 !
+  Add Path Guard section
+<span class="t-dim">  branch  oni/path-guard-3f2a1b9c</span>
+<span class="t-ok">verify</span>  node verify.mjs   <span class="t-ok">✓</span>
+<span class="t-warn">warn</span>    verify.mjs changed
+<span class="t-dim">        merge blocked until accepted</span>
+<span class="t-dim">────────────────────────────────────</span>
+<span class="t-dim">m merge · a accept · d discard · ? help</span></code></pre>
+          <div class="panel-foot">
+            <span class="pill">review</span>
+            <span class="mono">TUI · PWA · CLI</span>
+          </div>
+        </div>
+      </section>
+
+      <section class="section" id="philosophy" data-section="philosophy">
+        <div class="section-head reveal">
+          <p class="eyebrow">Philosophy</p>
+          <h2>Open source, not a SaaS.</h2>
+          <p>
+            Oni is a tool you own. The daemon runs on your machine, the worktrees
+            live on your disk, and the interface is a local web app or your
+            terminal. There is nothing to subscribe to.
+          </p>
+        </div>
+
+        <div class="cards">
+          <article class="card reveal">
+            <span class="card-index">01</span>
+            <h3>Free, with source</h3>
+            <p>
+              MIT-licensed code. Read it, fork it, run it offline, or change how
+              the loop works. No open-core bait and switch.
+            </p>
+          </article>
+          <article class="card reveal">
+            <span class="card-index">02</span>
+            <h3>No accounts, no seats</h3>
+            <p>
+              No login, no usage meter, no hosted control plane. Your repo and
+              your model credentials stay where you put them.
+            </p>
+          </article>
+          <article class="card reveal">
+            <span class="card-index">03</span>
+            <h3>Built for one human</h3>
+            <p>
+              Agents do the work. You review the real patch and decide. Oni is a
+              cockpit, not an autonomous deployment pipeline.
+            </p>
+          </article>
+        </div>
+      </section>
+
+      <section class="section" id="system" data-section="system">
+        <div class="section-head reveal">
+          <p class="eyebrow">The system</p>
+          <h2>Small surface. Sharp edges.</h2>
+          <p>
+            Every task is a contract: prompt, acceptance check, isolated branch,
+            and a human at the gate. The daemon owns git isolation; the agent
+            only owns its worktree.
+          </p>
+        </div>
+
+        <div class="cards">
+          <article class="card reveal">
+            <span class="card-index">01</span>
+            <h3>Worktree per task</h3>
+            <p>
+              Agents never write to the base branch. Each task gets a fresh
+              worktree and an <code>oni/&lt;slug&gt;</code> branch.
+            </p>
+          </article>
+          <article class="card reveal">
+            <span class="card-index">02</span>
+            <h3>Verification loop</h3>
+            <p>
+              Your command decides. Oni reinjects the failure, retries within a
+              bounded budget, and restores the verifier from the base branch.
+            </p>
+          </article>
+          <article class="card reveal">
+            <span class="card-index">03</span>
+            <h3>Human merge</h3>
+            <p>
+              Review the unified patch, then merge with <code>--no-ff</code>.
+              Stop, retry, accept verification changes, or discard without
+              cleaning up a mess.
+            </p>
+          </article>
+        </div>
+      </section>
+
+      <section class="section" id="interfaces" data-section="interfaces">
+        <div class="section-head reveal">
+          <p class="eyebrow">Interfaces</p>
+          <h2>One daemon. Four ways in.</h2>
+          <p>
+            Start a task from a terminal, supervise from a desktop browser, or
+            check in from your phone. All clients speak the same local API.
+          </p>
+        </div>
+
+        <div class="interface-grid">
+          <article class="interface reveal">
+            <p class="interface-kicker">Terminal</p>
+            <h3>TUI</h3>
+            <p>
+              <code>oni</code> opens the Ratatui TUI with a live task list,
+              logs, patches, and a Juniperus command palette.
+            </p>
+            <p class="mono interface-note">oni · : route · ? help</p>
+          </article>
+          <article class="interface reveal">
+            <p class="interface-kicker">Desktop</p>
+            <h3>PWA</h3>
+            <p>
+              A wider supervision view for mouse and keyboard: projects, tasks,
+              patches, actions, and verification warnings.
+            </p>
+            <p class="mono interface-note">http://127.0.0.1:7766</p>
+          </article>
+          <article class="interface reveal">
+            <p class="interface-kicker">Phone</p>
+            <h3>Mobile</h3>
+            <p>
+              One-hand review, merge, stop, and retry from the same PWA. Install
+              it over HTTPS, or reach the TUI over SSH.
+            </p>
+            <p class="mono interface-note">add to home screen</p>
+          </article>
+          <article class="interface reveal">
+            <p class="interface-kicker">Scripts</p>
+            <h3>CLI</h3>
+            <p>
+              <code>oni health</code>, <code>oni tasks</code>, <code>oni
+              new --watch</code>, <code>oni merge</code>. JSON output for
+              automation.
+            </p>
+            <p class="mono interface-note">oni --help</p>
+          </article>
+        </div>
+      </section>
+
+      <section class="section split" id="juniperus" data-section="juniperus">
+        <div class="section-head reveal">
+          <p class="eyebrow">Optional router</p>
+          <h2>Juniperus, preview only.</h2>
+          <p>
+            A small local model can turn “mergeá la tarea 3f2a1b9c” into a
+            structured decision. Oni validates and sanitizes it, then shows it
+            to you. It never executes the decision.
+          </p>
+          <p class="mono interface-note">
+            deterministic fallback · no main_direct · human gate
+          </p>
+        </div>
+        <div class="code-card reveal">
+          <div class="panel-bar">
+            <span class="dot"></span><span class="dot"></span><span class="dot"></span>
+            <span class="panel-title">oni route</span>
+          </div>
+          <pre class="terminal"><code><span class="t-dim">$</span> oni route "mergeá la tarea 3f2a1b9c"
+intent      <span class="t-gold">merge_worktree</span>
+project     oni-demo-page
+agent       opencode
+worktree    isolated_branch
+loop        completed · max 1
+<span class="t-warn">preview only; nothing was executed</span></code></pre>
+        </div>
+      </section>
+
+      <section class="section" id="docs" data-section="docs">
+        <div class="section-head reveal">
+          <p class="eyebrow">Documentation</p>
+          <h2>Read the source, not a sales deck.</h2>
+          <p>
+            Everything is in the repository: scope, architecture, TUI keys,
+            sandbox plan, brand rules, and the Juniperus contract.
+          </p>
+        </div>
+
+        <div class="docs-grid">
+          <a class="doc-card reveal" href="https://github.com/Davoassassin27/oni#readme">
+            <span class="card-index">01</span>
+            <h3>README</h3>
+            <p>Install, run, and the full interface map.</p>
+          </a>
+          <a class="doc-card reveal" href="https://github.com/Davoassassin27/oni/blob/master/docs/MVP.md">
+            <span class="card-index">02</span>
+            <h3>MVP &amp; state machine</h3>
+            <p>Scope, guardrails, review states, and roadmap.</p>
+          </a>
+          <a class="doc-card reveal" href="https://github.com/Davoassassin27/oni/blob/master/docs/TUI.md">
+            <span class="card-index">03</span>
+            <h3>TUI guide</h3>
+            <p>Keys, layout, mouse targets, and the route preview.</p>
+          </a>
+          <a class="doc-card reveal" href="https://github.com/Davoassassin27/oni/blob/master/docs/SANDBOX.md">
+            <span class="card-index">04</span>
+            <h3>Sandbox plan</h3>
+            <p>Why worktrees are not a filesystem jail, and what is next.</p>
+          </a>
+          <a class="doc-card reveal" href="https://github.com/Davoassassin27/oni/tree/master/juniperus">
+            <span class="card-index">05</span>
+            <h3>Juniperus</h3>
+            <p>Contract v1, dataset, LoRA/GGUF pipeline, sidecar, and bench.</p>
+          </a>
+          <a class="doc-card reveal" href="https://github.com/Davoassassin27/oni/blob/master/docs/BRAND.md">
+            <span class="card-index">06</span>
+            <h3>Brand</h3>
+            <p>Palette, type, wordmark rules, and the Hannya caveat.</p>
+          </a>
+        </div>
+
+        <div class="install-block reveal" id="install">
+          <div class="install-head">
+            <p class="eyebrow">Install</p>
+            <h2>From zero to a TUI.</h2>
+            <p>
+              Rust 1.88+, Node 22+, git, and an agent CLI. The PWA is embedded in
+              the daemon binary.
+            </p>
+          </div>
+          <pre class="terminal install-terminal"><code><span class="t-dim"># clone the repo</span>
+git clone https://github.com/Davoassassin27/oni
+cd oni
+
+<span class="t-dim"># build the embedded PWA and the daemon</span>
+npm install
+npm run build
+cargo build --release --manifest-path oni-daemon/Cargo.toml
+
+<span class="t-dim"># terminal 1: run the daemon</span>
+./oni-daemon/target/release/oni-daemon
+
+<span class="t-dim"># terminal 2: install and open the TUI</span>
+cargo install --path oni-daemon --bin oni --locked
+oni</code></pre>
+        </div>
+      </section>
+
+      <section class="section split" id="principles" data-section="principles">
+        <div class="section-head reveal">
+          <p class="eyebrow">Principles</p>
+          <h2>Boring where it matters.</h2>
+        </div>
+        <ul class="principle-list reveal">
+          <li><span>01</span> No agent writes to the base branch.</li>
+          <li><span>02</span> Verification is mandatory before review.</li>
+          <li><span>03</span> The verifier is restored from the base branch.</li>
+          <li><span>04</span> Merge is always a human action.</li>
+          <li><span>05</span> No accounts, no cloud, no telemetry.</li>
+          <li><span>06</span> Mobile first, one hand, 44 px targets.</li>
+        </ul>
+      </section>
+    </main>
+
+    <footer class="site-footer" id="footer">
+      <div class="footer-brand">
+        <span class="brand-mark" aria-hidden="true"></span>
+        <span>ONI</span>
+      </div>
+      <p>
+        Open source under MIT. Brand assets excluded.
+        <a href="https://github.com/Davoassassin27/oni">Source</a> ·
+        <a href="#docs">Docs</a>
+      </p>
+      <p class="mono">© <span id="year">2026</span> Oni · v0.1.0</p>
+    </footer>
+  </body>
+</html>

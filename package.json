@@ -11,6 +11,7 @@
     "preview": "npm run preview --workspace @oni/pwa",
     "daemon": "cargo run --manifest-path oni-daemon/Cargo.toml",
     "tui": "cargo run --manifest-path oni-tui/Cargo.toml",
+    "site": "node site/serve.mjs",
     "smoke": "node scripts/smoke.mjs",
     "smoke:opencode": "node scripts/smoke.mjs --agent opencode",
     "check": "cargo check --manifest-path oni-daemon/Cargo.toml && npm run build"

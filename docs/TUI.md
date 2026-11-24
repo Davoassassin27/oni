@@ -73,7 +73,8 @@ j/k move · Tab filter · p project · r refresh · v patch · m merge ...
 | `j` / `k`, `↑` / `↓` | Mover selección. |
 | `g` / `G`, Home/End | Primera / última tarea. |
 | `Tab`, `1`–`5` | Filtrar: ALL, ACTIVE, REVIEW, DONE, FAILED. |
-| `p` | Ciclar filtro de proyecto. |
+| `p` | Abrir el selector de proyecto. |
+| `f` | Buscar por título, proyecto o branch. |
 | `:` o `/` | Command palette de Juniperus; muestra la decisión en preview. |
 | `r` | Refrescar ahora. |
 | `v` | Ver el patch unificado de la tarea. |

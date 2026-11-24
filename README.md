@@ -1,360 +1,238 @@
-# ONI 鬼
+# ONI
 
-> **Tu máquina trabaja. Tu teléfono supervisa.**
+**A local-first agentic development environment.** Oni runs coding agents in
+disposable git worktrees, verifies every attempt, and leaves the merge decision
+to you. Open source, MIT, no accounts and no cloud control plane.
 
-Oni es un **Agentic Development Environment** headless: un daemon local escrito
-en Rust que ejecuta agentes de código en worktrees aislados, verifica su trabajo
-y te deja revisar, reintentar, cortar o mergear desde una PWA pensada para una
-mano.
+[![CI](https://github.com/Davoassassin27/oni/actions/workflows/ci.yml/badge.svg)](https://github.com/Davoassassin27/oni/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-c9a227.svg)](LICENSE)
 
-- **Daemon:** Rust + Axum + Tokio.
-- **Aislamiento:** un worktree y una rama `oni/<slug>` por tarea.
-- **Loop:** Act → Verify → retry acotado. Nada escribe en `main` hasta que vos
-  lo apruebes.
-- **Interfaz:** React + Vite + Tailwind, mobile-first, instalable como PWA.
-- **Router:** Juniperus, un SLM local <1B opcional que convierte lenguaje
-  natural en intenciones validadas. Si no está, el router determinístico
-  responde igual. Ver [`juniperus/README.md`](juniperus/README.md).
-- **Marca:** Shiro Hannya, sumi / hueso / kintsugi / vermilion. Ver
-  [`docs/BRAND.md`](docs/BRAND.md).
+![Oni desktop PWA showing a review queue and task list](docs/assets/pwa-desktop.png)
 
-**Estado:** MVP funcional (M0–M3). El flujo completo — proyecto, worktree,
-agente, verificación, review, merge y discard — corre end-to-end. Le faltan
-pulido, tests de integración y las piezas marcadas en
-[`docs/MVP.md`](docs/MVP.md).
+**Status: v0.1.0, early. OpenCode is exercised end-to-end; Juniperus is
+preview-only and no trained model weights are included.**
 
----
+[Landing page](https://davoassassin27.github.io/oni/) ·
+[Documentation](#docs) · [Juniperus](juniperus/)
 
-## Qué ya funciona
+## What is Oni
 
-- Registrar un repo local con rama base, comando de verificación y preset de
-  agente.
-- Crear una tarea desde la PWA; Oni crea un worktree aislado.
-- Ejecutar OpenCode, Claude Code o un comando custom headless.
-- Streamear el log en vivo por SSE y persistirlo a disco.
-- Correr la verificación después de cada intento, reinyectar el error y
-  reintentar hasta el límite.
-- Ver diff stat, archivos cambiados y el **patch unificado** con hunks.
-- Editar y borrar proyectos; borrar mantiene el historial de tareas.
-- Verificación protegida: el verificador se restaura desde la rama base y los
-  cambios en tests/CI/config requieren aceptación humana antes del merge.
-- Stop real (mata el árbol de procesos), retry, discard y merge `--no-ff`.
-- Persistencia de estado entre reinicios; las tareas interrumpidas se marcan
-  como `failed` en vez de quedar colgadas.
-- PWA instalable, dark-first, con reconexión y token opcional para LAN.
-- La PWA queda embebida en el binario: no hace falta `dist/` en runtime.
-- CLI `oni` para health, proyectos, tareas, dispatch, watch, log, patch, merge,
-  stop y discard.
-- TUI en Ratatui con lista, detalle, log, patch y acciones; intro opcional con
-  TerminalTextEffects.
+Oni is a supervision layer around CLI coding agents. The daemon runs on your
+machine, creates one isolated worktree per task, streams the agent's output,
+runs your verification command, retries with the failure output, and stops at a
+review screen. You inspect the real patch and merge, retry, accept, or discard.
 
-### Smoke test automatizado
+It is for developers who already use an agent such as OpenCode or Claude Code
+and want the loop around it: isolation, verified attempts, a review gate, and a
+way to supervise from a terminal or a phone.
 
-Con el daemon corriendo:
+## Why Oni
 
-```bash
-npm run smoke            # agente fake, sin tokens
-npm run smoke:opencode   # OpenCode real, usa el modelo configurado en OpenCode
-```
+Running an agent directly in your checkout is fast until it edits the wrong
+files, weakens a test, or leaves half a refactor behind. Oni adds the parts that
+make that workflow repeatable:
 
-`smoke:opencode` corre OpenCode con `--auto` (headless, sin aprobaciones
-interactivas). Para forzar un modelo sin tocar la config global del CLI, arrancá
-el daemon con `ONI_OPENCODE_MODEL=<provider/model>`:
+- **A worktree per task.** Agents never write to the base branch. Every task gets
+  an `oni/<slug>` branch and a disposable worktree.
+- **Verification is a gate.** Your command must pass before review. Failures are
+  fed back into the next attempt, within a bounded iteration and time budget.
+- **The verifier is protected.** File-based verifiers are restored from the base
+  branch, and changes to tests, CI, lockfiles, or configs require an explicit
+  human acceptance before merge.
+- **Merge is human.** Oni merges with `--no-ff` only when you ask. There is no
+  auto-merge.
+- **Three interfaces.** A terminal UI, a desktop/mobile PWA, and a scripting
+  CLI over the same local API.
+- **No SaaS.** No sign-up, seats, usage metering, hosted control plane, or
+  analytics. The daemon talks to localhost.
 
-```powershell
-$env:ONI_OPENCODE_MODEL="opencode-go/beam-free"
-.\oni-daemon\target\debug\oni-daemon.exe
-```
+Oni is not an editor, a cloud agent platform, a multi-agent DAG orchestrator,
+or a filesystem sandbox. If you want a single interactive agent inside your
+editor, use OpenCode, Claude Code, or Codex directly. Oni is the layer that
+supervises their work.
 
-El script crea un repo temporal, registra el proyecto, lanza una tarea, espera
-`review`, valida el patch, mergea y comprueba que el archivo llegó a `main`.
-Si falla, deja el repo y el log para inspeccionar.
+## Requirements
 
-En GitHub Actions, `.github/workflows/ci.yml` corre formato, tests, build de la
-PWA, este smoke con agente fake en Linux y los tests/dataset offline de
-Juniperus; no consume tokens de modelo.
+- **Rust 1.88+**
+- **Node 22+**
+- **git**
+- At least one agent CLI: **OpenCode** (tested), Claude Code (preset, untested),
+  or a custom command that reads the prompt from stdin.
+- Optional: **Python 3.11 + uv** for Juniperus.
+- Optional: **TerminalTextEffects** (`tte`) for the TUI intro.
 
-### Dogfood
-
-Primera corrida real con tres tareas sobre una landing estática: pricing, theme
-toggle y formulario de contacto. Resultados y hallazgos en
-[`docs/DOGFOOD.md`](docs/DOGFOOD.md).
-
-## Inicio rápido
-
-Requisitos: **Rust 1.88+**, **Node 22+**, **git** y al menos un agente CLI en el
-`PATH` (`opencode` o `claude`).
+## Quick start
 
 ```bash
+git clone https://github.com/Davoassassin27/oni
+cd oni
+
+# Build the PWA that gets embedded in the daemon, then start the daemon.
 npm install
 npm run build
 cargo run --manifest-path oni-daemon/Cargo.toml
 ```
 
-Abrí <http://127.0.0.1:7766>. Los datos viven en `~/.oni` (en Windows,
-`C:\Users\<vos>\.oni`).
-
-### Binario único
-
-La PWA se compila dentro del daemon, así que un solo ejecutable sirve la API y
-la app; no necesitás `clients/pwa/dist` en runtime:
-
-```bash
-npm run build                                      # genera dist/ antes de compilar
-cargo build --release --manifest-path oni-daemon/Cargo.toml
-.\oni-daemon\target\release\oni-daemon.exe
-```
-
-`ONI_PWA_DIR` sirve para sobreescribir eso y servir un build desde disco.
-
-### CLI
-
-El mismo build genera `oni-daemon` y `oni`. El CLI habla con el daemon por HTTP:
-
-```bash
-cargo build --manifest-path oni-daemon/Cargo.toml
-
-.\oni-daemon\target\debug\oni.exe health
-.\oni-daemon\target\debug\oni.exe projects
-.\oni-daemon\target\debug\oni.exe tasks
-.\oni-daemon\target\debug\oni.exe task <id>
-.\oni-daemon\target\debug\oni.exe log <id> --tail 40
-.\oni-daemon\target\debug\oni.exe new --project <proyecto> --watch "agregar FAQ"
-.\oni-daemon\target\debug\oni.exe patch <id> --stat
-.\oni-daemon\target\debug\oni.exe accept <id>
-.\oni-daemon\target\debug\oni.exe merge <id>
-.\oni-daemon\target\debug\oni.exe stop <id>
-.\oni-daemon\target\debug\oni.exe discard <id>
-.\oni-daemon\target\debug\oni.exe route "mergeá la tarea <id>"
-```
-
-Acepta `--url` o `ONI_URL`, `--token` o `ONI_TOKEN`, y `--json` para scripting.
-Los IDs de tarea se pueden abreviar a 8 caracteres. `accept` solo hace falta
-cuando la tarea quedó marcada con cambios sensibles en la verificación.
-
-### TUI
-
-La TUI es la interfaz principal de terminal. Se abre con `oni` sin subcomando,
-o explícitamente con `oni tui`:
-
-```bash
-cargo build --manifest-path oni-daemon/Cargo.toml
-.\oni-daemon\target\debug\oni.exe
-```
-
-Para tener el comando en el PATH:
+In a second terminal:
 
 ```bash
 cargo install --path oni-daemon --bin oni --locked
 oni
 ```
 
-Muestra la lista de tareas, el detalle, el log en vivo, el diff y permite
-merge, discard, stop, retry y aceptar cambios de verificación. Teclas: `?` para
-la ayuda completa. `oni tui --no-intro` saltea la animación. `:` o `/` abre el
-command palette de Juniperus y muestra la decisión en modo preview.
+`oni` opens the terminal UI. The PWA is served by the daemon at
+<http://127.0.0.1:7766>. Data lives in `~/.oni` (`C:\Users\<you>\.oni` on
+Windows).
 
-El intro y el cierre usan **TerminalTextEffects** con una hannya ASCII blanca y
-el wordmark ONI:
+The TUI intro uses TerminalTextEffects when `tte` is available:
 
 ```bash
 uv tool install terminaltexteffects
-# o: pipx install terminaltexteffects
+# or: pipx install terminaltexteffects
 ```
 
-Sin TTE la TUI funciona igual. `--no-intro` o `ONI_TUI_INTRO=0` lo desactivan;
-`ONI_TTE_BIN` permite apuntar a otro binario.
+Skip it with `oni tui --no-intro` or `ONI_TUI_INTRO=0`.
 
-También existe el binario `oni-tui` si querés abrir la TUI sin pasar por el CLI.
-
-Guía completa de teclas y layout: [`docs/TUI.md`](docs/TUI.md).
-
-### Router opcional (Juniperus)
-
-Juniperus vive en [`juniperus/`](juniperus/README.md) como un sidecar local. El
-daemon lo usa si `ONI_JUNIPERUS_URL` está definido; si no, cae al router
-determinístico en Rust. La decisión es sólo un **preview**: no ejecuta nada.
-
-```powershell
-# sidecar sin modelo (reglas), para probar la integración
-cd juniperus
-uv run juniperus serve --backend mock --port 7767
-
-# en otra terminal
-$env:ONI_JUNIPERUS_URL="http://127.0.0.1:7767"
-.\oni-daemon\target\debug\oni-daemon.exe
-
-# preview de una decisión
-.\oni-daemon\target\debug\oni.exe route "mergeá la tarea 3f2a1b9c"
-```
-
-Pipeline del modelo (dataset, LoRA, GGUF, bench) en
-[`juniperus/docs/PIPELINE.md`](juniperus/docs/PIPELINE.md). Contrato en
-[`juniperus/docs/CONTRACT.md`](juniperus/docs/CONTRACT.md).
-
-### Desarrollo
-
-Dos terminales:
+### CLI
 
 ```bash
-# terminal 1 — daemon
-cargo run --manifest-path oni-daemon/Cargo.toml
-
-# terminal 2 — PWA con HMR y proxy a /api
-npm run dev
+oni health
+oni projects
+oni tasks --state review
+oni task <id-prefix>
+oni log <id> --tail 40
+oni new --project <project> --watch "add an FAQ section"
+oni patch <id> --stat
+oni accept <id>     # only when verification-sensitive files changed
+oni merge <id>
+oni stop <id>
+oni discard <id>
 ```
 
-Vite queda en <http://127.0.0.1:5173> y proxya `/api` al daemon en `:7766`.
+`--url` / `ONI_URL`, `--token` / `ONI_TOKEN`, and `--json` are available for
+scripting. Task IDs can be abbreviated to 8 characters.
 
-### Primer uso
+### TUI
 
-1. **Projects → Add project**: path absoluto, rama base, comando de
-   verificación y agente.
-2. **Tasks → New task**: título, prompt, criterio de aceptación. Oni crea el
-   worktree y arranca.
-3. Mirá el log en vivo. Cuando el estado pasa a **Review**, revisá el diff.
-4. **Merge** (exige repo limpio y rama base chequeada), **Retry** o
-   **Discard**.
+`oni` opens a Ratatui dashboard with a task list, detail, live log, unified
+patch, and actions. Press `?` for keys. `:` or `/` opens the Juniperus command
+palette and shows a preview decision without executing it.
 
-## Presets de agente
+See [`docs/TUI.md`](docs/TUI.md) for the full key map and layout.
 
-| Preset | Comando | Notas |
-|---|---|---|
-| OpenCode | `opencode run <prompt>` | Recomendado para el primer dogfood. |
-| Claude Code | `claude -p <prompt> --permission-mode acceptEdits` | Puede rechazar tools que requieran aprobación; revisá el log. |
-| Custom | shell command | Corre en el worktree y recibe el prompt por **stdin**. |
-
-Oni está diseñado para agentes **headless**: no espera una TUI interactiva. Si
-tu agente pide permisos, configurá su modo no interactivo o usá un wrapper. El
-aislamiento es un worktree, no una sandbox de seguridad.
-
-## Cómo funciona
+## How it works
 
 ```text
-PWA ──REST + SSE──> oni-daemon ──spawn──> agente CLI
-                       │
-                       ├── git worktree add -b oni/<slug>
-                       ├── stream log + persist
-                       ├── verify command (retry acotado)
-                       ├── commit de lo que dejó el agente
-                       └── review → merge / discard
+task prompt
+  → fresh worktree on oni/<slug>
+  → agent runs headless with the prompt
+  → acceptance command runs in the worktree
+      fail → error is fed into the next attempt (bounded)
+  → review: diff stat, files, unified patch, verification output
+  → human: merge --no-ff, retry, accept verification changes, or discard
 ```
 
-Estados:
+The daemon exposes REST + SSE, with no CORS. The PWA is same-origin and can be
+embedded in the daemon binary; `ONI_PWA_DIR` serves a build from disk during
+development.
 
-```text
-queued → acting → verifying → review → merged
-            │         │          └──→ discarded
-            │         └──fail──→ retrying → acting
-            └──stop───────────→ stopped
+## Juniperus
+
+Juniperus is an optional local router. It turns a natural-language command into
+a structured decision and returns it as a **preview**; the daemon validates and
+sanitizes it, then shows it to you. It never creates tasks, merges, or kills
+processes.
+
+```bash
+cd juniperus
+uv sync --extra dev
+uv run juniperus serve --backend mock --port 7767
+
+# another terminal
+export ONI_JUNIPERUS_URL=http://127.0.0.1:7767   # PowerShell: $env:...
+oni route "mergeá la tarea 3f2a1b9c"
 ```
 
-La rama base nunca se toca hasta el merge. El merge exige que el repo esté
-limpio y que la rama base esté chequeada; si hay conflicto, se aborta y la tarea
-queda en review.
+The deterministic fallback answers when the sidecar is missing or fails
+(`source: fallback`). `main_direct` is always downgraded to an isolated branch.
+The contract, dataset, LoRA/GGUF pipeline, sidecar, and bench live in
+[`juniperus/`](juniperus/). The trained GGUF is not distributed here.
 
-## Seguridad
+## Safety and data handling
 
-- El daemon escucha en `127.0.0.1` por defecto.
-- Para LAN: `ONI_HOST=0.0.0.0` + `ONI_TOKEN=<secreto>` y abrí la IP de la
-  máquina desde el teléfono. La PWA guarda el token en `localStorage`.
-- No hay CORS: la API solo está pensada para el mismo origen. En desarrollo,
-  Vite proxya `/api`.
-- **No expongas el daemon a internet.** Ejecuta comandos arbitrarios por diseño.
-  Si necesitás acceso remoto, usá Tailscale o una VPN.
-- Instalar la PWA en el teléfono requiere **HTTPS** (service worker). HTTP plano
-  funciona como web app; para instalar, usá Tailscale Serve o un proxy TLS.
-- Los comandos de agente y de verificación son code execution. Conectá solo
-  repos que controlás.
-- **El worktree aísla Git, no el filesystem.** Un agente corre con tus permisos
-  y puede escribir fuera del worktree con rutas absolutas o `..`. Para agentes
-  no confiables, usá un contenedor, WSL o una VM con permisos restringidos.
-  Diseño recomendado en [`docs/SANDBOX.md`](docs/SANDBOX.md).
-- La verificación restaura desde la rama base el archivo del verificador
-  referenciado por el acceptance command. Los cambios en tests, CI, lockfiles o
-  configuración se muestran como sensibles y bloquean el merge hasta que un
-  humano los acepta explícitamente.
+- The daemon binds to `127.0.0.1` by default. LAN mode requires
+  `ONI_HOST=0.0.0.0` and `ONI_TOKEN`.
+- No CORS. The API is intended for the same-origin PWA.
+- The token stays in the daemon environment and browser `localStorage`; it is
+  never written to the repository.
+- **Worktree isolation is Git-level, not a filesystem jail.** An agent runs
+  with your permissions and can write outside its worktree using absolute paths
+  or `..`; Oni will not see that in the diff. Use a container, WSL, or VM with
+  restricted permissions for untrusted agents. See
+  [`docs/SANDBOX.md`](docs/SANDBOX.md).
+- Verification restores the file-based verifier from the base branch and flags
+  test/CI/config changes, but review remains mandatory.
 
-## Configuración
+## Status
 
-| Variable | Default | Descripción |
-|---|---|---|
-| `ONI_HOST` | `127.0.0.1` | Interfaz de bind. |
-| `ONI_PORT` | `7766` | Puerto HTTP. |
-| `ONI_TOKEN` | vacío | Si está, protege `/api` con bearer token. |
-| `ONI_DATA_DIR` | `~/.oni` | Estado, logs y worktrees. |
-| `ONI_PWA_DIR` | vacío | Sirve la PWA desde disco; vacío usa la PWA embebida. |
-| `ONI_AGENT_TIMEOUT_SECS` | `1800` | Timeout por intento de agente. |
-| `ONI_VERIFY_TIMEOUT_SECS` | `600` | Timeout de la verificación. |
-| `ONI_OPENCODE_MODEL` | vacío | `provider/model` opcional para `opencode run --model`. |
-| `ONI_OPENCODE_BIN` | autodetectado | Ruta explícita al binario de OpenCode. |
-| `ONI_JUNIPERUS_URL` | vacío | Sidecar Juniperus; vacío usa el fallback determinístico. |
-| `ONI_JUNIPERUS_TOKEN` | vacío | Bearer token opcional para el sidecar. |
-| `ONI_JUNIPERUS_TIMEOUT_MS` | `1500` | Timeout del sidecar antes de caer al fallback. |
-| `ONI_LOG` | `oni_daemon=info,tower_http=info` | Filtro de `tracing`. |
+`v0.1.0` is an early release, not a finished product. The walking skeleton is
+real: project → worktree → agent → verify → retry → review → merge/discard,
+with a CLI, a TUI, and a desktop/mobile PWA.
 
-## API
+Known gaps:
 
-```text
-GET    /api/health
-GET    /api/projects          POST /api/projects
-PUT    /api/projects/:id      DELETE /api/projects/:id
-GET    /api/tasks             POST /api/tasks
-GET    /api/tasks/:id
-GET    /api/tasks/:id/log
-GET    /api/tasks/:id/diff
-GET    /api/tasks/:id/patch
-POST   /api/tasks/:id/stop
-POST   /api/tasks/:id/retry
-POST   /api/tasks/:id/merge
-POST   /api/tasks/:id/accept-verification
-POST   /api/tasks/:id/discard
-POST   /api/router/route      (preview de Juniperus, no ejecuta)
-GET    /api/router/status
-GET    /api/events            (SSE)
+- OpenCode is exercised end-to-end; the Claude Code preset is implemented but
+  not yet tested.
+- Worktrees are Git isolation, not a filesystem sandbox. See
+  [`docs/SANDBOX.md`](docs/SANDBOX.md).
+- Juniperus ships the contract, mock/rules, pipeline, sidecar, and fallback;
+  it does not ship trained GGUF weights.
+- PWA install over LAN requires HTTPS (Tailscale Serve or a TLS proxy).
+- CI runs on Linux; no Windows/macOS matrix yet.
+
+## Docs
+
+Most docs are in Spanish; issues and pull requests in English or Spanish are
+welcome.
+
+- [`docs/MVP.md`](docs/MVP.md) — scope, state machine, guardrails, roadmap.
+- [`docs/TUI.md`](docs/TUI.md) — terminal UI keys and layout.
+- [`docs/SANDBOX.md`](docs/SANDBOX.md) — isolation model and next steps.
+- [`docs/BRAND.md`](docs/BRAND.md) — palette, type, wordmark rules.
+- [`docs/DOGFOOD.md`](docs/DOGFOOD.md) — real runs, retries, stop/discard, path probe.
+- [`juniperus/docs/CONTRACT.md`](juniperus/docs/CONTRACT.md) — router contract v1.
+- [`site/`](site/) — the open-source landing page.
+
+## Development
+
+```bash
+cargo test --manifest-path oni-daemon/Cargo.toml
+cargo test --manifest-path oni-tui/Cargo.toml
+npm run build
+
+cd juniperus
+uv sync --extra dev
+uv run pytest
+uv run ruff check .
 ```
 
-El contrato completo y el alcance del MVP están en
-[`docs/MVP.md`](docs/MVP.md).
+CI runs Rust format/tests, the PWA build, the fake-agent smoke test, and the
+Juniperus pytest/ruff/oracle bench on Linux.
 
-## Estructura
+## Contributing
 
-```text
-oni/
-├── docs/                 MVP + sistema de marca
-├── oni-daemon/           daemon Rust (Axum, git, runner, router fallback)
-├── clients/pwa/          PWA React + Vite + Tailwind
-├── juniperus/            SLM router (contrato, dataset, LoRA, GGUF, sidecar)
-├── images/               brand book y assets originales
-├── package.json          workspace raíz
-└── README.md
-```
+Issues and focused pull requests are welcome. Run the tests listed above and
+sign off commits with the DCO (`git commit -s`). See
+[`CONTRIBUTING.md`](CONTRIBUTING.md). For vulnerabilities, use
+[`SECURITY.md`](SECURITY.md), not a public issue.
 
-### Brand y fuentes
+## License and brand
 
-- **Inter** (UI) + **JetBrains Mono** (código/metadatos), ambas **SIL OFL 1.1**,
-  self-hosted en `clients/pwa/public/fonts/`.
-- Paleta: sumi `#0B0B0C`, hueso `#F3EFE6`, kintsugi `#C9A227`, ceniza
-  `#8B857A`, vermilion `#E23B2E`.
-- El wordmark está vectorizado: no se reescribe con una fuente.
-- La Hannya deriva de una referencia de Noun Project. **Antes de uso comercial
-  o registro marcario hay que licenciarla o redibujarla.** Ver
-  [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md).
+Code and documentation are **MIT** ([`LICENSE`](LICENSE)). The Oni name,
+wordmark, hannya mark, brand book, and visual assets are **not** covered by the
+MIT license; see [`TRADEMARKS.md`](TRADEMARKS.md). The hannya symbol derives
+from a Noun Project reference and needs licensing or a redraw before commercial
+or trademark use; see [`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md).
 
-## Roadmap
-
-- **M4 — Phone-ready:** probar LAN + token + instalación real en iOS/Android.
-- **M5 — Dogfood:** 10 tareas reales, medir intervenciones y merges limpios.
-- **Después:** push notifications, múltiples verificaciones, PTY interactiva,
-  edición/borrado de proyectos, SQLite, CI.
-
-Juniperus ya vive en `juniperus/` como router local opcional en modo preview
-(con fallback determinístico y sin ejecutar acciones). Siguen fuera del MVP:
-multiagente/DAGs, edición de código desde el teléfono, cuentas/cloud y
-auto-merge. Ver [`juniperus/docs/ONI_INTEGRATION.md`](juniperus/docs/ONI_INTEGRATION.md).
-
-## Licencia
-
-Código: decisión pendiente (**MIT sugerida**). Marca, logo y brand book: todos
-los derechos reservados. Fuentes y assets de terceros: ver
-[`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md).
+Contributions are welcome under the DCO. See [`CONTRIBUTING.md`](CONTRIBUTING.md)
+and [`SECURITY.md`](SECURITY.md).

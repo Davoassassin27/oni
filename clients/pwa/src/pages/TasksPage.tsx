@@ -175,7 +175,7 @@ export default function TasksPage({ online }: { online: boolean | null }) {
           )}
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="grid gap-3 lg:grid-cols-2">
           {visible.map((task, index) => (
             <div
               key={task.id}

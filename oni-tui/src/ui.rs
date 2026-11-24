@@ -41,6 +41,8 @@ pub fn draw(frame: &mut Frame, app: &App) {
         Mode::Patch => draw_patch(frame, app, area),
         Mode::Command => draw_command(frame, app, area),
         Mode::Route => draw_route(frame, app, area),
+        Mode::Search => draw_search(frame, app, area),
+        Mode::Projects => draw_projects(frame, app, area),
     }
 }
 
@@ -89,28 +91,37 @@ fn draw_header(frame: &mut Frame, app: &App, area: Rect) {
     ]);
 
     let project = app.project_filter.as_deref().unwrap_or("all projects");
-    let line_two = Line::from(vec![
+    let mut line_two_spans = vec![
         Span::styled("project ", Style::default().fg(MUTED)),
         Span::styled(project, Style::default().fg(HUESO)),
         Span::raw("   "),
         Span::styled("filter ", Style::default().fg(MUTED)),
         Span::styled(app.filter.label(), Style::default().fg(KINTSUGI)),
-        Span::raw("   "),
-        Span::styled(
-            app.health
-                .as_ref()
-                .map(|health| {
-                    format!(
-                        "{} tasks · {} project{}",
-                        health.tasks,
-                        health.projects,
-                        if health.projects == 1 { "" } else { "s" }
-                    )
-                })
-                .unwrap_or_else(|| "waiting for daemon".into()),
-            Style::default().fg(CENIZA),
-        ),
-    ]);
+    ];
+    if !app.search.is_empty() {
+        line_two_spans.push(Span::raw("   "));
+        line_two_spans.push(Span::styled("search ", Style::default().fg(MUTED)));
+        line_two_spans.push(Span::styled(
+            app.search.clone(),
+            Style::default().fg(KINTSUGI),
+        ));
+    }
+    line_two_spans.push(Span::raw("   "));
+    line_two_spans.push(Span::styled(
+        app.health
+            .as_ref()
+            .map(|health| {
+                format!(
+                    "{} tasks · {} project{}",
+                    health.tasks,
+                    health.projects,
+                    if health.projects == 1 { "" } else { "s" }
+                )
+            })
+            .unwrap_or_else(|| "waiting for daemon".into()),
+        Style::default().fg(CENIZA),
+    ));
+    let line_two = Line::from(line_two_spans);
 
     let header = Paragraph::new(Text::from(vec![line_one, line_two])).block(
         Block::default()
@@ -412,7 +423,7 @@ fn draw_status(frame: &mut Frame, app: &App, area: Rect) {
     } else {
         Line::from(vec![
             Span::styled(
-                " j/k move · Tab filter · p project · : route · r refresh · v patch · ",
+                " j/k move · Tab filter · f search · p project · : route · r refresh · v patch · ",
                 Style::default().fg(CENIZA),
             ),
             Span::styled("m", Style::default().fg(KINTSUGI)),
@@ -437,7 +448,7 @@ fn draw_status(frame: &mut Frame, app: &App, area: Rect) {
 }
 
 fn draw_help(frame: &mut Frame, area: Rect) {
-    let popup = centered_rect(100, 18, area);
+    let popup = centered_rect(100, 20, area);
     frame.render_widget(Clear, popup);
     let block = Block::default()
         .borders(Borders::ALL)
@@ -467,7 +478,8 @@ fn draw_help(frame: &mut Frame, area: Rect) {
         Line::from("  j / k, ↑ / ↓     move selection"),
         Line::from("  g / G            first / last"),
         Line::from("  Tab, 1–5         filter tasks"),
-        Line::from("  p                cycle project filter"),
+        Line::from("  f                search tasks"),
+        Line::from("  p                project picker"),
         Line::from("  r                refresh now"),
         Line::from("  : /              Juniperus route preview"),
         Line::from(""),
@@ -537,6 +549,105 @@ fn draw_confirm(frame: &mut Frame, app: &App, action: ConfirmAction) {
         .block(block)
         .wrap(Wrap { trim: false });
     frame.render_widget(paragraph, popup);
+}
+
+fn draw_search(frame: &mut Frame, app: &App, area: Rect) {
+    let popup = centered_rect(96, 5, area);
+    frame.render_widget(Clear, popup);
+    let block = Block::default()
+        .borders(Borders::ALL)
+        .border_style(Style::default().fg(KINTSUGI))
+        .title(Span::styled(
+            " search tasks ",
+            Style::default().fg(KINTSUGI).add_modifier(Modifier::BOLD),
+        ));
+    let input = if app.search_input.is_empty() {
+        "title, project or branch…".to_string()
+    } else {
+        app.search_input.clone()
+    };
+    let color = if app.search_input.is_empty() {
+        MUTED
+    } else {
+        HUESO
+    };
+    let lines = vec![
+        Line::from(vec![
+            Span::styled(
+                "f ",
+                Style::default().fg(KINTSUGI).add_modifier(Modifier::BOLD),
+            ),
+            Span::styled(input, Style::default().fg(color)),
+            Span::styled("▌", Style::default().fg(KINTSUGI)),
+        ]),
+        Line::from(Span::styled(
+            "Enter apply · Esc clear · Ctrl+U clear",
+            Style::default().fg(MUTED),
+        )),
+    ];
+    frame.render_widget(Paragraph::new(lines).block(block), popup);
+}
+
+fn draw_projects(frame: &mut Frame, app: &App, area: Rect) {
+    let names = app.project_names();
+    let height = (names.len() as u16 + 6).min(22);
+    let popup = centered_rect(72, height, area);
+    frame.render_widget(Clear, popup);
+    let block = Block::default()
+        .borders(Borders::ALL)
+        .border_style(Style::default().fg(KINTSUGI))
+        .title(Span::styled(
+            " project filter ",
+            Style::default().fg(KINTSUGI).add_modifier(Modifier::BOLD),
+        ));
+    let mut lines = Vec::new();
+    let all_selected = app.project_selection == 0;
+    lines.push(Line::from(vec![
+        Span::styled(
+            if all_selected { "▌ " } else { "  " },
+            Style::default().fg(KINTSUGI),
+        ),
+        Span::styled(
+            "All projects",
+            if all_selected {
+                Style::default().fg(KINTSUGI).add_modifier(Modifier::BOLD)
+            } else {
+                Style::default().fg(HUESO)
+            },
+        ),
+        Span::raw("  "),
+        Span::styled(app.tasks.len().to_string(), Style::default().fg(MUTED)),
+    ]));
+    for (index, name) in names.iter().enumerate() {
+        let selected = app.project_selection == index + 1;
+        let count = app
+            .tasks
+            .iter()
+            .filter(|task| &task.project_name == name)
+            .count();
+        lines.push(Line::from(vec![
+            Span::styled(
+                if selected { "▌ " } else { "  " },
+                Style::default().fg(KINTSUGI),
+            ),
+            Span::styled(
+                name,
+                if selected {
+                    Style::default().fg(KINTSUGI).add_modifier(Modifier::BOLD)
+                } else {
+                    Style::default().fg(HUESO)
+                },
+            ),
+            Span::raw("  "),
+            Span::styled(count.to_string(), Style::default().fg(MUTED)),
+        ]));
+    }
+    lines.push(Line::from(""));
+    lines.push(Line::from(Span::styled(
+        "↑/↓ select · Enter apply · Esc cancel",
+        Style::default().fg(MUTED),
+    )));
+    frame.render_widget(Paragraph::new(lines).block(block), popup);
 }
 
 fn draw_command(frame: &mut Frame, app: &App, area: Rect) {
@@ -938,5 +1049,20 @@ mod tests {
         assert!(text.contains("spawn_agent"));
         assert!(text.contains("isolated_branch"));
         assert!(text.contains("preview only"));
+    }
+
+    #[test]
+    fn renders_search_and_project_overlays() {
+        let mut app = App::fixture();
+        app.mode = Mode::Search;
+        app.search_input = "guard".into();
+        let text = render(&app);
+        assert!(text.contains("search tasks"));
+
+        app.mode = Mode::Projects;
+        let text = render(&app);
+        assert!(text.contains("project filter"));
+        assert!(text.contains("All projects"));
+        assert!(text.contains("oni-demo-page"));
     }
 }

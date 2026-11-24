@@ -109,7 +109,7 @@ export default function ProjectsPage() {
           </Button>
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="grid gap-3 lg:grid-cols-2">
           {projects.data?.map((project, index) => (
             <article
               key={project.id}

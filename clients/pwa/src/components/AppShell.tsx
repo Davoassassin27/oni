@@ -98,7 +98,7 @@ export function AppShell({
 
         <main
           className={cn(
-            "mx-auto w-full max-w-4xl px-4 pt-6 md:px-8 md:pt-10",
+            "mx-auto w-full max-w-6xl px-4 pt-6 md:px-8 md:pt-10 2xl:max-w-7xl",
             isTaskDetail ? "pb-36 md:pb-16" : "pb-28 md:pb-16",
           )}
         >

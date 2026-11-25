@@ -118,7 +118,9 @@ scripting. Task IDs can be abbreviated to 8 characters.
 patch, and actions. Press `?` for keys. `:` or `/` opens the Juniperus command
 palette and shows a preview decision without executing it.
 
-See [`docs/TUI.md`](docs/TUI.md) for the full key map and layout.
+See [`docs/TUI.md`](docs/TUI.md) for the full key map and layout. The TUI is
+just a terminal client, so it works over SSH or Tailscale; the PWA can be
+reached over HTTPS for phone install.
 
 ## How it works
 

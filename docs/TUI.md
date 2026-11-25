@@ -109,6 +109,18 @@ uv tool install terminaltexteffects
 - `ONI_TTE_BIN` apunta a un binario específico.
 - Si TTE no está instalado, la TUI arranca directo, sin error.
 
+## Remote
+
+La TUI es un cliente de terminal: funciona por SSH o Tailscale sin cambios.
+
+```bash
+ssh you@homelab
+oni
+```
+
+La PWA necesita HTTPS para instalarse en el teléfono; usá Tailscale Serve o un
+proxy TLS. El daemon puede quedar en `127.0.0.1` y el proxy manejar el acceso.
+
 ## Límites
 
 - La TUI **supervisa**; para dispatch de tareas nuevas usá la PWA o `oni new`.
